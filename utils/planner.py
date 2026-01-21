@@ -1,7 +1,9 @@
 import math
 import json
 import time
-import rospy
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, DurabilityPolicy
 import heapq
 import numpy as np
 import logging
@@ -449,17 +451,15 @@ def plot_path_pv(path, obstacles_as_points):
     rgba = rgba / rgba.max(axis=0)
     pv.plot(np.concatenate((points, path), axis=0), scalars=np.concatenate((rgba, path_rgba), axis=0), render_points_as_spheres=True, point_size=10, cpos='xy', rgba=True)
 
-class PathPlanner(BasePathPlanner):
+class PathPlanner(BasePathPlanner, Node):
     """
     Path planner class. It utilizes the starting point and the target point to calculate the path.
     """
     def __init__(self, config) -> None:
-        super().__init__()
-        
+        BasePathPlanner.__init__(self)
+        rclpy.init(args=None)
+        Node.__init__(self, "planner")
         self.config = config
-        
-        # Start the ROS node
-        rospy.init_node("planner")
 
         # Waypoint counter
         self.waypoint_counter = 0
@@ -467,15 +467,15 @@ class PathPlanner(BasePathPlanner):
         self.last_speed_check_coordinate = None # last speed check position as a 3D numpy array (x, y, z)
 
         # Publish to the target waypoint topic
-        self.target_waypoint_pub = rospy.Publisher('/target/waypoint', Float32MultiArray, queue_size=1)
+        self.target_waypoint_pub = self.create_publisher(Float32MultiArray, '/target/waypoint', 1)
 
         # Calculate the path to the target
         self.start_point, self.end_point = self.get_start_end_points(config)
         self.waypoints, self.velocities = self.get_waypoints(self.start_point, self.end_point)
 
         # Subscribe to the global target topic
-        self.global_target_sub = rospy.Subscriber(config['ego_vehicle']['reference_topic'], Twist, self.global_target_callback)
-        self.pose_sub = rospy.Subscriber(f"/{config['ego_vehicle']['type']}/pose", PoseStamped, self.pose_callback)
+        self.global_target_sub = self.create_subscription(Twist, config['ego_vehicle']['reference_topic'], self.global_target_callback, 10)
+        self.pose_sub = self.create_subscription(PoseStamped, f"/{config['ego_vehicle']['type']}/pose", self.pose_callback, 10)
 
     def get_waypoints(self, start_point: np.array, end_point: np.array) -> List[np.array]:
         """
@@ -548,10 +548,12 @@ class PathPlanner(BasePathPlanner):
         return (start_point, end_point)
 
     def run(self):
-        r = rospy.Rate(10)
+        r = self.create_rate(10)
         start_time = time.time()
 
-        while not rospy.is_shutdown():
+        while rclpy.ok():
+            rclpy.spin_once(self, timeout_sec=0)
+
             # Publish the current waypoint
             message = Float32MultiArray()
             message.data = [
@@ -640,7 +642,7 @@ class SafePathPlanner(PathPlanner):
                 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
                 handler.setFormatter(formatter)
                 self.logger.addHandler(handler)
-                self.logger.addHandler(ROSLogHandler())  # Add ROS logging
+                # self.logger.addHandler(ROSLogHandler())  # Add ROS logging  # TODO: Correct logging service?
             
             # Validate safety config
             safety_config = config.get('safety_config', {})
@@ -665,64 +667,30 @@ class SafePathPlanner(PathPlanner):
             self.last_verification_result = None
             
             # Set up additional safety publishers with queue_size and latch
-            self.safety_status_pub = rospy.Publisher(
-                '/safety/status',
-                String,
-                queue_size=10,
-                latch=True  # Keep last message
-            )
+            latch_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)  # For latch=true
+            self.safety_status_pub = self.create_publisher(String, '/safety/status', latch_qos)
             
             # Set up additional safety subscribers with error handling
             self._setup_safety_subscribers()
             
         except Exception as e:
-            rospy.logerr(f"Failed to initialize SafePathPlanner: {str(e)}")
+            self.get_logger().error(f"Failed to initialize SafePathPlanner: {str(e)}")
             raise
 
     def _setup_safety_subscribers(self):
         """Set up all necessary safety-related ROS subscribers with error handling."""
         try:
             # Core flight data
-            self.velocity_sub = rospy.Subscriber(
-                f"/{self.config['ego_vehicle']['type']}/velocity",
-                Twist,
-                self.velocity_callback,
-                queue_size=10
-            )
-            self.attitude_rates_sub = rospy.Subscriber(
-                f"/{self.config['ego_vehicle']['type']}/attitude_rates",
-                Twist,
-                self.attitude_rates_callback,
-                queue_size=10
-            )
+            self.velocity_sub = self.create_subscription(Twist, f"/{self.config['ego_vehicle']['type']}/velocity", self.velocity_callback, 10)
+            self.attitude_rates_sub = self.create_subscription(Twist, f"/{self.config['ego_vehicle']['type']}/attitude_rates", self.attitude_rates_callback, 10)
             
             # Additional state data
-            self.battery_sub = rospy.Subscriber(
-                f"/{self.config['ego_vehicle']['type']}/battery",
-                Float32,
-                self.battery_callback,
-                queue_size=10
-            )
-            self.gps_sub = rospy.Subscriber(
-                f"/{self.config['ego_vehicle']['type']}/gps_status",
-                Float32,
-                self.gps_callback,
-                queue_size=10
-            )
-            self.wind_sub = rospy.Subscriber(
-                f"/{self.config['ego_vehicle']['type']}/wind",
-                WindStatus,
-                self.wind_callback,
-                queue_size=10
-            )
-            self.obstacles_sub = rospy.Subscriber(
-                f"/{self.config['ego_vehicle']['type']}/obstacles",
-                ObstacleArray,
-                self.obstacles_callback,
-                queue_size=10
-            )
+            self.battery_sub = self.create_subscription(Float32, f"/{self.config['ego_vehicle']['type']}/battery", self.battery_callback, 10)
+            self.gps_sub = self.create_subscription(Float32, f"/{self.config['ego_vehicle']['type']}/gps_status", self.gps_callback, 10)
+            self.wind_sub = self.create_subscription(WindStatus, f"/{self.config['ego_vehicle']['type']}/wind", self.wind_callback, 10)
+            self.obstacles_sub = self.create_subscription(ObstacleArray, f"/{self.config['ego_vehicle']['type']}/obstacles", self.obstacles_callback, 10)
         except Exception as e:
-            rospy.logerr(f"Failed to set up safety subscribers: {str(e)}")
+            self.get_logger().error(f"Failed to set up safety subscribers: {str(e)}")
             raise
 
     def get_current_state_data(self) -> Dict:
@@ -786,16 +754,17 @@ class SafePathPlanner(PathPlanner):
 
             return state_data
         except Exception as e:
-            rospy.logerr(f"Error getting state data: {str(e)}")
+            self.get_logger().error(f"Error getting state data: {str(e)}")
             return {}
 
     def run(self):
         """Main execution loop with safety verification."""
         try:
-            r = rospy.Rate(10)
+            r = self.create_rate(10)
             start_time = time.time()
 
-            while not rospy.is_shutdown():
+            while rclpy.ok():
+                rclpy.spin_once(self, timeout_sec=0)
                 try:
                     if self.current_position is None:
                         r.sleep()
@@ -843,7 +812,7 @@ class SafePathPlanner(PathPlanner):
                                     self.current_position
                                 )
                         except Exception as e:
-                            rospy.logerr(f"Safety verification failed: {str(e)}")
+                            self.get_logger().error(f"Safety verification failed: {str(e)}")
                             # Default to current position if safety verification fails
                             modified_waypoint = self.current_position
                         
@@ -868,17 +837,17 @@ class SafePathPlanner(PathPlanner):
                     try:
                         self.target_waypoint_pub.publish(message)
                     except Exception as e:
-                        rospy.logerr(f"Failed to publish waypoint: {str(e)}")
+                        self.get_logger().error(f"Error in main loop: {str(e)}")
 
                     r.sleep()
                 except Exception as e:
-                    rospy.logerr(f"Error in main loop: {str(e)}")
+                    self.get_logger().error(f"Error in main loop: {str(e)}")
                     r.sleep()
 
-        except rospy.ROSInterruptException:
-            rospy.loginfo("ROS node interrupted")
+        except KeyboardInterrupt:
+            self.get_logger().info("ROS node interrupted")
         except Exception as e:
-            rospy.logerr(f"Fatal error in run loop: {str(e)}")
+            self.get_logger().error(f"Fatal error in run loop: {str(e)}")
 
     def _determine_planning_action(self, 
                                  current_pos: np.ndarray, 
@@ -923,12 +892,12 @@ class SafePathPlanner(PathPlanner):
                 'score': float(verification_result.score),  # Ensure JSON serializable
                 'active_predicates': [p.name for p in verification_result.active_predicates],
                 'verified_actions': [a.name for a in verification_result.verified_actions],
-                'timestamp': rospy.Time.now().to_sec()
+                'timestamp': self.get_clock().now().nanoseconds / 1e9
             }
             status_msg.data = json.dumps(status)
             self.safety_status_pub.publish(status_msg)
         except Exception as e:
-            rospy.logerr(f"Failed to publish safety status: {str(e)}")
+            self.get_logger().error(f"Failed to publish safety status: {str(e)}")
 
     # Callback methods for subscribers
     def velocity_callback(self, data):
@@ -940,7 +909,7 @@ class SafePathPlanner(PathPlanner):
                 data.linear.z
             ])
         except Exception as e:
-            rospy.logerr(f"Error in velocity callback: {str(e)}")
+            self.get_logger().error(f"Error in velocity callback: {str(e)}")
 
     def attitude_rates_callback(self, data):
         """Store attitude rates data with error handling."""
@@ -951,21 +920,21 @@ class SafePathPlanner(PathPlanner):
                 data.angular.z   # Yaw rate
             ])
         except Exception as e:
-            rospy.logerr(f"Error in attitude rates callback: {str(e)}")
+            self.get_logger().error(f"Error in attitude rates callback: {str(e)}")
 
     def battery_callback(self, data):
         """Store battery level data with error handling."""
         try:
             self.current_battery_level = data.data
         except Exception as e:
-            rospy.logerr(f"Error in battery callback: {str(e)}")
+            self.get_logger().error(f"Error in battery callback: {str(e)}")
 
     def gps_callback(self, data):
         """Store GPS signal strength data with error handling."""
         try:
             self.gps_signal_strength = data.data
         except Exception as e:
-            rospy.logerr(f"Error in GPS callback: {str(e)}")
+            self.get_logger().error(f"Error in gps callback: {str(e)}")
 
     def wind_callback(self, data):
         """Store wind data with error handling."""
@@ -976,7 +945,7 @@ class SafePathPlanner(PathPlanner):
                 'direction': data.direction
             }
         except Exception as e:
-            rospy.logerr(f"Error in wind callback: {str(e)}")
+            self.get_logger().error(f"Error in wind callback: {str(e)}")
 
     def obstacles_callback(self, data):
         """Store obstacle data with error handling and validation."""
@@ -986,14 +955,14 @@ class SafePathPlanner(PathPlanner):
                 # Validate obstacle data
                 if not all(hasattr(obstacle, attr) for attr in 
                          ['x_min', 'x_max', 'y_min', 'y_max', 'z_min', 'z_max', 'is_moving']):
-                    rospy.logwarn("Received invalid obstacle data")
+                    self.get_logger().warn("Received invalid obstacle data")
                     continue
                     
                 # Validate coordinates
                 if not (obstacle.x_min <= obstacle.x_max and 
                        obstacle.y_min <= obstacle.y_max and 
                        obstacle.z_min <= obstacle.z_max):
-                    rospy.logwarn("Received invalid obstacle coordinates")
+                    self.get_logger().warn("Received invalid obstacle coordinates")
                     continue
                 
                 self.obstacles.append({
@@ -1007,7 +976,7 @@ class SafePathPlanner(PathPlanner):
                     'velocity': np.array(obstacle.velocity) if len(obstacle.velocity) == 3 else np.zeros(3)
                 })
         except Exception as e:
-            rospy.logerr(f"Error in obstacles callback: {str(e)}")
+            self.get_logger().error(f"Error in obstacles callback: {str(e)}")
 
     def pose_callback(self, data):
         """Override base pose callback to store current position."""
@@ -1023,7 +992,7 @@ class SafePathPlanner(PathPlanner):
             super().pose_callback(data)
             
         except Exception as e:
-            rospy.logerr(f"Error in pose callback: {str(e)}")
+            self.get_logger().error(f"Error in pose callback: {str(e)}")
 
     def _initialize_rules(self) -> List[Rule]:
         """Initialize all safety rules with their weights."""

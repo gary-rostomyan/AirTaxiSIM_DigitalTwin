@@ -1,4 +1,6 @@
 import os
+from typing_extensions import deprecated
+
 import roslaunch
 import rospy
 import subprocess
@@ -7,6 +9,7 @@ import time
 from loguru import logger as log
 
 
+@deprecated("ROSManager is deprecated. It is unused in both the previous and current versions.")
 class ROSManager:
     def __init__(self, workspace_path):
         self.workspace_path = workspace_path

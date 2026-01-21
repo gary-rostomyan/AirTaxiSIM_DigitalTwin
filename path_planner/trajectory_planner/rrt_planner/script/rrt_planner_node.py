@@ -4,7 +4,8 @@ import os
 import sys
 import math
 import time
-import rospy
+import rclpy
+from rclpy.node import Node as ROSNode
 import random
 import numpy as np
 from typing import List
@@ -350,19 +351,19 @@ class RRTPlanner:
             # print("CURRENT PATH IS VALID")
             return self.get_path_as_list()
 
-class RRTPlannerNode:
+class RRTPlannerNode(ROSNode):
     def __init__(self, config):
+        # Initialize the ROS2 node
+        super().__init__('rrt_planner')
+
         # Record the config
         self.config = config
-
-        # Initialize the RRT planner node
-        rospy.init_node('rrt_planner')
 
         self.last_speed_check_time = None # last speed check time in s
         self.last_speed_check_coordinate = None # last speed check position as a 3D numpy array (x, y, z)
 
         # Publish to the target waypoint topic
-        self.target_waypoint_pub = rospy.Publisher('/target/waypoint', Float32MultiArray, queue_size=1)
+        self.target_waypoint_pub = self.create_publisher(Float32MultiArray, '/target/waypoint', 1)
 
         # Extract the start and target points
         log.info("Extrating the start and goal points...")
@@ -387,13 +388,13 @@ class RRTPlannerNode:
         log.info(f"Planning took {round(et - st, 2)} seconds")
 
         # Subscribe to the octomap to read the occupancy map
-        self.octomap_sub = rospy.Subscriber('/octomap_point_cloud_centers', PointCloud2, self.octomap_callback)
+        self.octomap_sub = self.create_subscription(PointCloud2, '/octomap_point_cloud_centers', self.octomap_callback, 10)
 
         # Subscribe to the goal topic
-        self.global_target_sub = rospy.Subscriber(config['ego_vehicle']['reference_topic'], Twist, self.global_target_callback)
+        self.global_target_sub = self.create_subscription(Twist, config['ego_vehicle']['reference_topic'], self.global_target_callback, 10)
 
         # Subscribe to the vehicle pose topic
-        self.pose_sub = rospy.Subscriber(f"/{config['ego_vehicle']['type']}/pose", PoseStamped, self.pose_callback)
+        self.pose_sub = self.create_subscription(PoseStamped, f"/{config['ego_vehicle']['type']}/pose", self.pose_callback, 10)
 
     def get_start_end_points(self, config):
         # Start point
@@ -435,10 +436,12 @@ class RRTPlannerNode:
 
     def run(self):
         log.info("Running RRT planner node...")
-        r = rospy.Rate(10)
+        r = self.create_rate(10)
         start_time = time.time()
 
-        while not rospy.is_shutdown():
+        while rclpy.ok():
+            rclpy.spin_once(self, timeout_sec=0)
+
             # Publish the current waypoint
             message = Float32MultiArray()
             message.data = [
@@ -512,6 +515,9 @@ class RRTPlannerNode:
                 self.last_speed_check_coordinate = np.array([x_curr, y_curr, z_curr])
 
 def main():
+    # Initialize the ROS2 system
+    rclpy.init(args=None)
+
     # Load the config file
     config = load_yaml_file(constants.merged_config_path, __file__)
 
@@ -519,10 +525,14 @@ def main():
     rrt_planner_node = RRTPlannerNode(config)
 
     # Run the RRT planner node
-    rrt_planner_node.run()
+    try:
+        rrt_planner_node.run()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # Destroy the node explicitly
+        rrt_planner_node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == "__main__":
-    try:
-        main()
-    except rospy.ROSInterruptException:
-        pass
+    main()

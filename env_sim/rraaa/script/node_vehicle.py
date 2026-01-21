@@ -2,7 +2,8 @@
 
 import functools as ft
 import ipdb
-import rospy
+import rclpy
+import time
 
 from loguru import logger as log
 
@@ -44,20 +45,22 @@ class MiniHawk_Node(Vehicle_Node):
             self.vehicle_pose_pub.publish(self.vehicle_pose_msg)
 
         def simulate():
-            rospy.spin()
+            rclpy.spin(self)
 
         # Subscribe to the ROS topic which publishes the pose
         pose_processor = ft.partial(pose_processor, self)
-        rospy.Subscriber(
-            self.pose_topic,
+        self.create_subscription(
             PoseStamped,
-            pose_processor
+            self.pose_topic,
+            pose_processor,
+            10
         )
 
         # Run the simulation
         simulate()
 
 if __name__ == "__main__":
+    rclpy.init()
     config = load_yaml_file(constants.merged_config_path, __file__)
 
     vehicle_type = config['ego_vehicle']['type']
@@ -71,5 +74,7 @@ if __name__ == "__main__":
             minihawk_node.main()
     else:
         log.info("This node only supports MiniHawk, skipping.")
-        while not rospy.is_shutdown():
-            rospy.sleep(1)  # Sleep to avoid busy-waiting, adjust as needed
+        while rclpy.ok():
+            time.sleep(1)  # Sleep to avoid busy-waiting, adjust as needed
+
+    rclpy.shutdown()

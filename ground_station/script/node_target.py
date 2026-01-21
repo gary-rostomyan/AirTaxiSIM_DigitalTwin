@@ -2,7 +2,7 @@
 
 import os
 import sys
-import rospy
+import rclpy
 from geometry_msgs.msg import Twist, PoseStamped
 # import pdb; pdb.set_trace()
 sys.path.append(os.path.abspath('/catkin_ws/src/scripts/utils'))
@@ -10,19 +10,20 @@ from utils import constants
 from utils.config import load_yaml_file
 
 class PoseListener:
-    def __init__(self, vehicle_type):
+    def __init__(self, node, vehicle_type):
         self.data = None
         self.vehicle_type = vehicle_type
-        self.subscriber = rospy.Subscriber(f'/{vehicle_type}/pose', PoseStamped, self.callback)  # Replace with your topic and message type
+        self.subscriber = node.create_subscription(PoseStamped, f'/{vehicle_type}/pose', self.callback, 10)  # Replace with your topic and message type
 
     def callback(self, data):
         if self.data is None:
             self.data = data  # Store the received message
 
 def main():
-    pub = rospy.Publisher('/target/pose', Twist, queue_size=10)
-    rospy.init_node('target')
-    r = rospy.Rate(10) # 10hz
+    rclpy.init()
+    node = rclpy.create_node('target')
+    pub = node.create_publisher(Twist, '/target/pose', 10)
+    r = node.create_rate(10) # 10hz
     target_point = Twist()
 
     # Load {x,y,z} from the config file
@@ -37,16 +38,17 @@ def main():
         pass
     elif target_type == "relative":
         # Estimate the starting pose
-        pose_listener = PoseListener(vehicle_type=config['ego_vehicle']['type'])
+        pose_listener = PoseListener(node, vehicle_type=config['ego_vehicle']['type'])
     else:
         raise ValueError(f"Incorrect target type {config['target']['type']}. Must be one of: absolute, relative.")
 
     # Publish the target pose
-    while not rospy.is_shutdown():
+    while rclpy.ok():
+        rclpy.spin_once(node, timeout_sec=0)
         if target_type == "absolute":
-            target_point.linear.x = x
-            target_point.linear.y = y
-            target_point.linear.z = z
+            target_point.linear.x = float(x)
+            target_point.linear.y = float(y)
+            target_point.linear.z = float(z)
             pub.publish(target_point)
         elif target_type == "relative":
             if pose_listener.data is not None:
@@ -58,8 +60,8 @@ def main():
             raise ValueError(f"Incorrect target type {config['target']['type']}. Must be one of: absolute, relative.")
         r.sleep()
 
+    node.destroy_node()
+    rclpy.shutdown()
+
 if __name__ == "__main__":
-    try:
-        main()
-    except rospy.ROSInterruptException:
-        pass
+    main()

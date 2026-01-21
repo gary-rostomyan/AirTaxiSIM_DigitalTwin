@@ -5,13 +5,14 @@ import numpy as np
 import time
 import carla
 from tools.constants import COLOR_BLACK
-import rospy
+import rclpy
+from rclpy.qos import QoSProfile
 import weakref
 import collections
 import math
 from geometry_msgs.msg import PoseStamped, Twist
 from sensor_msgs.msg import Image
-from tf.transformations import euler_from_quaternion
+from tf_transformations import euler_from_quaternion
 
 
 # ==============================================================================
@@ -79,9 +80,12 @@ class CustomTimer:
         return self.timer()
 
 class SensorManager:
-    def __init__(self, world, sensor_type, transform, attached, sensor_options):
+    def __init__(self, world, display_manager, sensor_type, transform, attached, sensor_options, display_pos):
+        # TODO: use `display_manager` and `display_pos. These variables are not introduced in the first version of this program.
         self.surface = None
         self.world = world
+        self.display_manager = display_manager
+        self.display_pos = display_pos
         self.sensor = self.init_sensor(sensor_type, transform, attached, sensor_options)
         self.sensor_options = sensor_options
         self.timer = CustomTimer()
@@ -90,6 +94,9 @@ class SensorManager:
         self.tics_processing = 0
 
         self.data = None
+
+        if self.display_manager:
+            self.display_manager.add_sensor(self)
 
     def init_sensor(self, sensor_type, transform, attached, sensor_options):
         if sensor_type == 'RGBCamera':
@@ -217,8 +224,8 @@ class SensorManager:
 
 class GuamVelocitySensor:
 
-    def __init__(self):
-        self.sub = rospy.Subscriber('/guam/velocity', Twist, self.on_new_msg)
+    def __init__(self, node):
+        self.sub = node.create_subscription(Twist, '/guam/velocity', self.on_new_msg, 1)  # TODO: queue_size = 1, requires further revision!
         self.linear = carla.Vector3D()
         self.angular = carla.Vector3D()
         self.ready = False
