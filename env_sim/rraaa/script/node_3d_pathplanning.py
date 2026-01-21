@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import rospy
+import rclpy
+from rclpy.node import Node
 import torch
 import numpy as np
 
@@ -11,24 +12,23 @@ from std_msgs.msg import MultiArrayDimension      # See http://docs.ros.org/api/
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-import rospy
 from std_msgs.msg import String
 
-class ROSNode:
+class ROSNode(Node):
     def __init__(self):
         # Initialize the ROS node
-        rospy.init_node('node_torch')
+        super().__init__('node_torch')
 
         # Create a publisher for a topic
-        self.publisher = rospy.Publisher('example_topic', String, queue_size=10)
+        self.publisher = self.create_publisher(String, 'example_topic', 10)
 
         # Create a subscriber for a topic
-        rospy.Subscriber('/octomap_conv_array', Float64MultiArray, self.callback)
+        self.subscription = self.create_subscription(Float64MultiArray, '/octomap_conv_array', self.callback, 10)
 
     def callback(self, msg):
         # This method is called when a new message is received on the subscribed topic
         # rospy.loginfo("Received message: %s", data.data)
-        rospy.loginfo("Received")
+        self.get_logger().info("Received")
 
         height = msg.layout.dim[0].size
         width = msg.layout.dim[1].size
@@ -79,15 +79,22 @@ class ROSNode:
 
     def publish_message(self, message):
         # Publish a message to the topic
-        self.publisher.publish(message)
+        msg = String()
+        msg.data = message
+        self.publisher.publish(msg)
 
 if __name__ == '__main__':
+    rclpy.init()
     try:
         node = ROSNode()
-        rate = rospy.Rate(10)  # 10 Hz (adjust the rate as needed)
-        while not rospy.is_shutdown():
+        rate = node.create_rate(10)  # 10 Hz (adjust the rate as needed)
+        while rclpy.ok():
+            rclpy.spin_once(node, timeout_sec=0)
             message = "Hello, ROS!"
             node.publish_message(message)
             rate.sleep()
-    except rospy.ROSInterruptException:
+    except KeyboardInterrupt:
         pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()

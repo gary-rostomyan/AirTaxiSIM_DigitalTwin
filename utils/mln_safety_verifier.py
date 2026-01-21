@@ -4,7 +4,11 @@ from dataclasses import dataclass, field
 from typing import List, Set, Dict, Tuple, Optional, Union
 import math
 import logging
-import rospy  # Add ROS import
+
+# Add ROS2 import
+import rclpy
+from rclpy.node import Node
+from rclpy.logging import LoggingSeverity
 
 class Action(Enum):
     # Basic Movement
@@ -173,25 +177,31 @@ class SafetyVerificationError(Exception):
     pass
 
 class ROSLogHandler(logging.Handler):
-    """Custom logging handler that forwards logs to ROS logging system."""
+    """Custom logging handler that forwards logs to ROS2 logging system."""
+
+    def __init__(self, node_logger):
+        super().__init__()
+        self.node_logger = node_logger
+
     def emit(self, record):
         try:
             msg = self.format(record)
             if record.levelno >= logging.ERROR:
-                rospy.logerr(msg)
+                self.node_logger.error(msg)
             elif record.levelno >= logging.WARNING:
-                rospy.logwarn(msg)
+                self.node_logger.warning(msg)
             elif record.levelno >= logging.INFO:
-                rospy.loginfo(msg)
+                self.node_logger.info(msg)
             else:
-                rospy.logdebug(msg)
+                self.node_logger.debug(msg)
         except Exception:
             self.handleError(record)
 
 class MLNSafetyVerifier:
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, ros_node: Node, config: Optional[Dict] = None):
         """Initialize the MLN Safety Verifier."""
         try:
+            self.node = ros_node
             self.config = config or self._get_default_config()
             self.rules = self._initialize_rules()
             self.mutually_exclusive_actions = self._initialize_mutual_exclusions()
@@ -211,7 +221,8 @@ class MLNSafetyVerifier:
             # Validate configuration
             self._validate_config()
         except Exception as e:
-            rospy.logerr(f"Failed to initialize safety verifier: {str(e)}")
+            if self.node:
+                self.node.get_logger().error(f"Failed to initialize safety verifier: {str(e)}")
             raise SafetyVerificationError(f"Failed to initialize safety verifier: {str(e)}")
 
     def _validate_config(self):

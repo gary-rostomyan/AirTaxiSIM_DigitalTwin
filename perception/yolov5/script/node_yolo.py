@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import rospy
+import rclpy
 import torch
 import numpy as np
 import PIL
@@ -88,19 +88,20 @@ def run_yolo_node(args):
     colors = color_list()
 
     # rosnode node initialization
-    rospy.init_node('perception_node')   # rosnode node initialization
+    rclpy.init(args=None)   # rosnode node initialization
+    node = rclpy.create_node('perception_node')  # create node
     print("Perception_node is initialized at", os.getcwd())
 
     # subscriber init.
-    sub_image = rospy.Subscriber('/carla_node/cam_down/image_raw', Image, fnc_img_callback)   # subscriber init.
+    sub_image = node.create_subscription(Image, '/carla_node/cam_down/image_raw', fnc_img_callback, 10)   # subscriber init.
 
     # publishers init.
-    pub_yolo_prediction = rospy.Publisher('/yolo_node/yolo_predictions', Float32MultiArray, queue_size=10)   # publisher1 initialization.
-    pub_yolo_boundingbox_video = rospy.Publisher('/yolo_node/yolo_pred_frame', Image, queue_size=10)   # publisher2 initialization.
-    pub_sort_prediction = rospy.Publisher('/yolo_node/sort_mot_predictions', Float32MultiArray, queue_size=10)   # publisher1 initialization.
-    pub_sort_boundingbox_video = rospy.Publisher('/yolo_node/sort_mot_frame', Image, queue_size=10)    # publisher3 initialization.
+    pub_yolo_prediction = node.create_publisher(Float32MultiArray, '/yolo_node/yolo_predictions', 10)   # publisher1 initialization.
+    pub_yolo_boundingbox_video = node.create_publisher(Image, '/yolo_node/yolo_pred_frame', 10)   # publisher2 initialization.
+    pub_sort_prediction = node.create_publisher(Float32MultiArray, '/yolo_node/sort_mot_predictions', 10)   # publisher1 initialization.
+    pub_sort_boundingbox_video = node.create_publisher(Image, '/yolo_node/sort_mot_frame', 10)    # publisher3 initialization.
 
-    rate=rospy.Rate(FREQ_NODE)   # Running rate at 20 Hz
+    rate = node.create_rate(FREQ_NODE)   # Running rate at 20 Hz
 
     # a bridge from cv2 image to ROS image
     mybridge = CvBridge()
@@ -112,7 +113,8 @@ def run_yolo_node(args):
     ##############################
     ### Instructions in a loop ###
     ##############################
-    while not rospy.is_shutdown():
+    while rclpy.ok():
+        rclpy.spin_once(node, timeout_sec=0)
 
         t_step += 1
 
@@ -186,6 +188,9 @@ def run_yolo_node(args):
 
         rate.sleep()
 
+    node.destroy_node()
+    rclpy.shutdown()
+
 
 def main():
 
@@ -213,7 +218,4 @@ def main():
 
 if __name__ == '__main__':
 
-    try:
-        main()
-    except rospy.ROSInterruptException:
-        pass
+    main()

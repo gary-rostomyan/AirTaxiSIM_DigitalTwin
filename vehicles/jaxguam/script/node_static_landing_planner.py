@@ -2,15 +2,14 @@
 
 from loguru import logger
 
-import rospy
+import rclpy
+from rclpy.node import Node
 from trajectory_msgs.msg import JointTrajectoryPoint
 
 import jax.numpy as jnp
 from jax_guam.guam_types import RefInputs
 
 from tools.sensors import GuamVelocitySensor
-
-rospy.set_param('freq', 10.0)
 
 
 def landing_reference_inputs(time, t_landing = 60, ground = 0, initial_height = 100):
@@ -45,26 +44,27 @@ def landing_reference_inputs(time, t_landing = 60, ground = 0, initial_height = 
     )
 
 
-class StaticPlanner:
+class StaticPlanner(Node):
 
     def __init__(self, z_initial, z_land, time_land):
-        rospy.init_node('planner')
-        self.rate = rospy.Rate(rospy.get_param('freq'))
-        self.pub = rospy.Publisher('/planner/reference', JointTrajectoryPoint, queue_size=1)
+        super().__init__('planner')
+        self.declare_parameter('freq', 10.0)
+        self.pub = self.create_publisher(JointTrajectoryPoint, '/planner/reference', 1)
         self.index = 0.0
-        self.time_delta = 1.0/rospy.get_param('freq')
+        self.time_delta = 1.0 / self.get_parameter('freq').value
         self.velocitysensor = GuamVelocitySensor()
         self.initial_pos_z = z_initial
         self.landing_pos_z = z_land
         self.landing_time = time_land
         self.traj_msg = JointTrajectoryPoint()
+        self.timer = self.create_timer(self.time_delta, self.tick)
 
     def publish(self, ref = None):
         if ref == None:
             # logger.warning("No trajectory set yet.")
             return
-        self.traj_msg.positions = ref.Pos_des
-        self.traj_msg.velocities = ref.Vel_bIc_des
+        self.traj_msg.positions = [float(x) for x in ref.Pos_des]
+        self.traj_msg.velocities = [float(x) for x in ref.Vel_bIc_des]
         self.pub.publish(self.traj_msg)
 
     def ready(self):
@@ -75,21 +75,22 @@ class StaticPlanner:
 
     def tick(self):
         if not self.ready():
-            self.rate.sleep()
             return
         self.publish(landing_reference_inputs(
             self.index * self.time_delta, self.landing_time, self.landing_pos_z, self.initial_pos_z))
         self.index = self.index + 1
-        self.rate.sleep()
 
 
-def main():
+def main(args=None):
+    rclpy.init(args=args)
     planner = StaticPlanner(z_initial = 100, z_land = 0, time_land = 60)
-    while not rospy.is_shutdown():
-        planner.tick()
+    try:
+        rclpy.spin(planner)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        planner.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
-    try:
-        main()
-    except rospy.ROSInterruptException:
-        pass
+    main()

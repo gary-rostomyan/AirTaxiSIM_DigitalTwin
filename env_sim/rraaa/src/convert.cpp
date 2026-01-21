@@ -1,9 +1,9 @@
-#include "ros/ros.h"
-#include "std_msgs/Float64MultiArray.h"
-#include "std_msgs/MultiArrayDimension.h"
+#include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
+#include "std_msgs/msg/multi_array_dimension.hpp"
 
 #include <octomap/octomap.h>
-#include <octomap_msgs/Octomap.h>
+#include <octomap_msgs/msg/octomap.hpp>
 #include <octomap_msgs/conversions.h>
 
 #include <vector>
@@ -59,7 +59,7 @@ class OctomapMsgConverter {
 
   public:
 
-    void Callback(const octomap_msgs::OctomapConstPtr& msg){
+    void Callback(const octomap_msgs::msg::Octomap::SharedPtr msg){
 
       recvd = true;
 
@@ -136,28 +136,27 @@ class OctomapMsgConverter {
 int main(int argc, char **argv)
 {
 
-  ros::init(argc, argv, "node_converter");
-
-  ros::NodeHandle n;
+  rclcpp::init(argc, argv);
+  auto node = rclcpp::Node::make_shared("node_converter");
 
   OctomapMsgConverter converter;
 
-  ros::Subscriber sub = n.subscribe("/octomap_full", 1000, &OctomapMsgConverter::Callback, &converter);
-  ros::Publisher pub = n.advertise<std_msgs::Float64MultiArray>("/octomap_conv_array", 1);
-  ros::Rate loop_rate(10);
+  auto sub = node->create_subscription<octomap_msgs::msg::Octomap>("/octomap_full", 1000, std::bind(&OctomapMsgConverter::Callback, &converter, std::placeholders::_1));
+  auto pub = node->create_publisher<std_msgs::msg::Float64MultiArray>("/octomap_conv_array", 1);
+  rclcpp::Rate loop_rate(10);
 
-  std_msgs::Float64MultiArray dat;
+  std_msgs::msg::Float64MultiArray dat;
 
 
   // fill out message:
-  dat.layout.dim.push_back(std_msgs::MultiArrayDimension());
-  dat.layout.dim.push_back(std_msgs::MultiArrayDimension());
+  dat.layout.dim.push_back(std_msgs::msg::MultiArrayDimension());
+  dat.layout.dim.push_back(std_msgs::msg::MultiArrayDimension());
   dat.layout.dim[0].label = "row";
   dat.layout.dim[1].label = "x,y,z,value";
 
 
   int count = 0;
-  while (ros::ok())
+  while (rclcpp::ok())
   {
     std::vector<double> vec = converter.getVector();
     if (vec.size()>1)
@@ -173,16 +172,17 @@ int main(int argc, char **argv)
     }
   
 
-    pub.publish(dat);
+    pub->publish(dat);
 
     vec.clear();
 
 
-    ros::spinOnce();
+    rclcpp::spin_some(node);
 
     loop_rate.sleep();
     ++count;
   };
 
+  rclcpp::shutdown();
   return 0;
 }

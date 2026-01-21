@@ -4,7 +4,8 @@ import functools as ft
 import ipdb
 import numpy as np
 import os
-import rospy
+import rclpy
+from rclpy.qos import QoSProfile
 
 from loguru import logger
 
@@ -48,12 +49,17 @@ class GUAM_Node(Vehicle_Node):
         self.guam_reference_sub = None
 
         logger.info("Subscribing to planner for trajectory reference...")
-        self.guam_reference_sub = rospy.Subscriber(config['ego_vehicle']['planner_topic'],
-                                                    Float32MultiArray,
-                                                    self.guam_reference_callback)
+        qos_profile = QoSProfile(depth=10)
+        self.guam_reference_sub = self.create_subscription(
+            Float32MultiArray,
+            config['ego_vehicle']['planner_topic'],
+            self.guam_reference_callback,
+            qos_profile
+        )
+
         self.guam_reference_init()
-        while self.guam_reference is None:
-            pass
+        while self.guam_reference is None and rclpy.ok():
+            rclpy.spin_once(self, timeout_sec=0.1)
 
     def guam_reference_init(self):
         # adjust for guam units and frame
@@ -112,7 +118,7 @@ class GUAM_Node(Vehicle_Node):
         # b_state.aircraft[:, 7] = jr.uniform(key1, (batch_size,), minval=-20.0, maxval=20.0)
 
         vmap_step = jax.jit(jax.vmap(ft.partial(self.guam.step, self.guam.dt), in_axes=(0, None)))
-        loop_rate = rospy.Rate(1/self.guam.dt) #in Hz guam.dt = 0.005, so rate = 200Hz
+        loop_rate = self.create_rate(1 / self.guam.dt)  #in Hz guam.dt = 0.005, so rate = 200Hz
 
         def simulate_batch(self, b_state0) -> GuamState:
             b_state = b_state0
@@ -124,7 +130,9 @@ class GUAM_Node(Vehicle_Node):
                 Ref_list = [vel_des0 + pos_des0]
 
             kk = 0
-            while not rospy.is_shutdown():
+            while rclpy.ok():
+                rclpy.spin_once(self, timeout_sec=0)
+
                 t = kk * self.guam.dt
                 kk = kk + 1
 
@@ -181,18 +189,25 @@ class GUAM_Node(Vehicle_Node):
             simulate_batch(self, b_state)
 
 if __name__ == "__main__":
+    rclpy.init()
+
     config = load_yaml_file(constants.merged_config_path, __file__)
 
     vehicle_type = config['ego_vehicle']['type']
     assert vehicle_type == 'jaxguam', "This node only supports JaxGUAM vehicle, remove jaxguam service from config."
 
-    if config['ego_vehicle']['debug']:
-        with ipdb.launch_ipdb_on_exception():
+    try:
+        if config['ego_vehicle']['debug']:
+            with ipdb.launch_ipdb_on_exception():
+                guam_node = GUAM_Node(config)
+                guam_node.main()
+        else:
             guam_node = GUAM_Node(config)
             guam_node.main()
-    else:
-        guam_node = GUAM_Node(config)
-        guam_node.main()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        rclpy.shutdown()
 
     if vehicle_type == 'guam' and config['ego_vehicle']['plot']:
         logger.info("Ploting...")

@@ -2,6 +2,30 @@
 Changelog for package octomap_server
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.3.0 (2024-07-02)
+------------------
+* Switch to the system-provided octomap library. (`#134 <https://github.com/octomap/octomap_mapping/issues/134>`_)
+* Contributors: Chris Lalancette
+
+2.2.0 (2024-05-25)
+------------------
+* Fix: Include missing tf2 geometry_msgs (`#128 <https://github.com/octomap/octomap_mapping/issues/128>`_)
+* Fix: Deprecated PCL APIs (`#126 <https://github.com/octomap/octomap_mapping/issues/126>`_)
+* Contributors: Wolfgang Merkt, Daisuke Nishimatsu
+
+2.1.0 (2024-02-24)
+------------------
+* Fix header include order error (`#125 <https://github.com/octomap/octomap_mapping/issues/125>`_)
+* Removed geometry2 deprecated headers (`#125 <https://github.com/octomap/octomap_mapping/issues/125>`_)
+* Fix errors when path name is invalid (`#108 <https://github.com/octomap/octomap_mapping/issues/108>`_)
+* Fix header include order (`#102 <https://github.com/octomap/octomap_mapping/issues/102>`_)
+* Contributors: Alejandro Hernández Cordero, Daisuke Nishimatsu, Wolfgang Merkt
+
+2.0.0 (2021-12-24)
+------------------
+* ROS2 Migration (`#95 <https://github.com/octomap/octomap_mapping/issues/95>`_)
+* Contributors: Daisuke Nishimatsu, Wolfgang Merkt
+
 0.6.7 (2021-12-24)
 ------------------
 * Address warnings on Noetic (`#81 <https://github.com/octomap/octomap_mapping/issues/81>`_)

@@ -48,16 +48,15 @@ from tools.map import MapImage, Util
 from tools.constants import PIXELS_PER_METER, DEVICE
 from tools.map import MapManager
 
-import rospy
+import rclpy
 from std_msgs.msg import Header, Float32, Bool
-from geometry_msgs.msg import PoseStamped, Twist, Vector3
-from sensor_msgs.msg import Image, CameraInfo, PointCloud2 
-from gazebo_msgs.msg import ModelStates 
+from geometry_msgs.msg import PoseStamped, Twist, Vector3, TransformStamped
+from sensor_msgs.msg import Image, CameraInfo, PointCloud2
+from gazebo_msgs.msg import ModelStates
 from nav_msgs.msg import Odometry
 from scipy.spatial.transform import Rotation
-import tf
-import sensor_msgs.point_cloud2 as pcl2  #https://answers.ros.org/question/207071/how-to-fill-up-a-pointcloud-message-with-data-in-python
-
+import tf2_ros
+from sensor_msgs_py import point_cloud2 as pcl2
 
 
 
@@ -78,7 +77,7 @@ def calra_eulerangs_to_quaternion(rotation):
     pitch= -(rotation.pitch+00)/180*np.pi
     yaw  = (rotation.yaw+00)/180*np.pi
 
-    quaternion = tf.transformations.quaternion_from_euler(yaw, pitch, roll, 'rzyx')
+    quaternion = Rotation.from_euler('zyx', [yaw, pitch, roll]).as_quat()
     return quaternion
 
 
@@ -94,19 +93,34 @@ def run_carla_node(args, client):
     vehicle = None
     vehicle_list = []
 
-    # rosnode node initialization
-    rospy.init_node('carla_node')
+    # ros2 node initialization
+    rclpy.init(args=None)
+    node = rclpy.create_node('carla_node')
 
     # subscriber init
 
     # publishers init.
-    pub_lidar_point_cloud  = rospy.Publisher('/carla_node/lidar_point_cloud', PointCloud2, queue_size=1)
+    pub_lidar_point_cloud = node.create_publisher(PointCloud2, '/carla_node/lidar_point_cloud', 1)
 
     # tf broadcaster init.
-    br0 = tf.TransformBroadcaster()
+    br0 = tf2_ros.TransformBroadcaster(node)
+
+    def broadcast_tf(trans, quat, time, child, parent):
+        t = TransformStamped()
+        t.header.stamp = time
+        t.header.frame_id = parent
+        t.child_frame_id = child
+        t.transform.translation.x = float(trans[0])
+        t.transform.translation.y = float(trans[1])
+        t.transform.translation.z = float(trans[2])
+        t.transform.rotation.x = float(quat[0])
+        t.transform.rotation.y = float(quat[1])
+        t.transform.rotation.z = float(quat[2])
+        t.transform.rotation.w = float(quat[3])
+        br0.sendTransform(t)
 
     # Running rate
-    rate=rospy.Rate(LOOP_FREQ)
+    rate = node.create_rate(LOOP_FREQ)
 
     try:
 
@@ -169,7 +183,7 @@ def run_carla_node(args, client):
 
         start_tick = pygame.time.get_ticks()
 
-        while not rospy.is_shutdown():
+        while rclpy.ok():
 
             # Carla Tick
             clock.tick(LOOP_FREQ)
@@ -227,25 +241,43 @@ def run_carla_node(args, client):
 
             ### Publish Sensor Data ###
             header = Header()
-            header.stamp = rospy.Time.now()
+            header.stamp = node.get_clock().now().to_msg()
 
             veh_transform = vehicle.get_transform()
             quat_from_euler = calra_eulerangs_to_quaternion(veh_transform.rotation)
-            br0.sendTransform((veh_transform.location.x-initial_transform.location.x, veh_transform.location.y-initial_transform.location.y, veh_transform.location.z-initial_transform.location.z), quat_from_euler, rospy.Time.now(), 'vehicle', 'map')
+            broadcast_tf(
+                (veh_transform.location.x - initial_transform.location.x,
+                 veh_transform.location.y - initial_transform.location.y,
+                 veh_transform.location.z - initial_transform.location.z),
+                quat_from_euler,
+                header.stamp,
+                'vehicle',
+                'map'
+            )
 
             sensor_transform = lidar_sensor_manager.sensor.get_transform()
             # sensor_transform.rotation.roll = 0
             # sensor_transform.rotation.pitch = 0
             # sensor_transform.rotation.yaw = 0
             quat_from_euler = calra_eulerangs_to_quaternion(sensor_transform.rotation)
-            br0.sendTransform((sensor_transform.location.x-initial_transform.location.x , sensor_transform.location.y-initial_transform.location.y, sensor_transform.location.z--initial_transform.location.z), quat_from_euler, rospy.Time.now(), 'sensor', "map")  
+            broadcast_tf(
+                (sensor_transform.location.x - initial_transform.location.x,
+                 sensor_transform.location.y - initial_transform.location.y,
+                 sensor_transform.location.z - initial_transform.location.z),
+                quat_from_euler,
+                header.stamp,
+                'sensor',
+                "map"
+            )
 
 
             header.frame_id = 'sensor'
             # points = lidar_sensor_manager.data[:,:3]  # The 4th componet is intensity.
             # print('points', points.shape)
             # scaled_polygon_pcl = pcl2.create_cloud_xyz32(header,lidar_sensor_manager.data[:,:3])
-            pub_lidar_point_cloud.publish(pcl2.create_cloud_xyz32(header,lidar_sensor_manager.data[:,:3]))
+
+            if lidar_sensor_manager.data is not None:
+                pub_lidar_point_cloud.publish(pcl2.create_cloud_xyz32(header, lidar_sensor_manager.data[:, :3]))
 
 
 
@@ -266,6 +298,8 @@ def run_carla_node(args, client):
         display_manager.destroy()
         client.apply_batch([carla.command.DestroyActor(x) for x in vehicle_list])
         world.apply_settings(original_settings)
+        node.destroy_node()
+        rclpy.shutdown()
 
 def main():
     argparser = argparse.ArgumentParser(
@@ -309,5 +343,5 @@ if __name__ == '__main__':
 
     try:
         main()
-    except rospy.ROSInterruptException:
-        pass
+    except Exception as e:
+        print(e)

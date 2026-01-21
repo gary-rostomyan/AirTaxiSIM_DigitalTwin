@@ -4,7 +4,7 @@ import os
 import sys
 import math
 
-import rospy
+import rclpy
 from std_msgs.msg import Bool
 from geometry_msgs.msg import PoseStamped, Twist
 
@@ -17,17 +17,18 @@ class SimControl:
     def __init__(self) -> None:
         self.config = load_yaml_file(constants.merged_config_path, __file__)
 
-        rospy.init_node("sim_control")
-        self.rate = rospy.Rate(constants.frequency_low)
+        rclpy.init(args=None)
+        self.node = rclpy.create_node("sim_control")
+        self.rate = self.node.create_rate(constants.frequency_low)
 
         # Pose & target pose
         self.pose = None
         self.target_pose = None
-        self.target_reached_pub = rospy.Publisher('/sim_control/target_reached', Bool, queue_size=1)
+        self.target_reached_pub = self.node.create_publisher(Bool, '/sim_control/target_reached', 1)
         self.target_reached = False
         self.pose_threshold = self.config['landing_threshold'] # If the distance between the target pose and the current pose is less than this number in meters, then the target is reached.
-        self.pose_sub = rospy.Subscriber(f"/{self.config['ego_vehicle']['type']}/pose", PoseStamped, self.pose_callback)
-        self.target_pose_sub = rospy.Subscriber(f"/target/pose", Twist, self.target_pose_callback)
+        self.pose_sub = self.node.create_subscription(PoseStamped, f"/{self.config['ego_vehicle']['type']}/pose", self.pose_callback, 10)
+        self.target_pose_sub = self.node.create_subscription(Twist, "/target/pose", self.target_pose_callback, 10)
 
     def pose_callback(self, msg):
         if self.target_reached:
@@ -40,7 +41,7 @@ class SimControl:
         else:
             log.trace("Landing target not reached.")
 
-        self.target_reached_pub.publish(self.target_reached)
+        self.target_reached_pub.publish(Bool(data=self.target_reached))
         write_shared_tmp_file(constants.landing_target_reached_file, self.target_reached)
 
     def target_pose_callback(self, msg):
@@ -66,8 +67,12 @@ class SimControl:
         return dist <= self.pose_threshold
 
     def run(self):
-        while not rospy.is_shutdown():
+        while rclpy.ok():
+            rclpy.spin_once(self.node, timeout_sec=0)
             self.rate.sleep()
+
+        self.node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == "__main__":
     controller = SimControl()

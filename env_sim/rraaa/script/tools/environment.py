@@ -3,14 +3,15 @@ import carla
 import numpy as np
 import pygame
 import random
-import rospy
+import rclpy
 import time
-import tf
+import tf2_ros
+import geometry_msgs.msg
 
 from std_msgs.msg import Float32, Bool, Header, String, Float32MultiArray, MultiArrayDimension
-from geometry_msgs.msg import PoseStamped, Twist, Vector3
+from geometry_msgs.msg import PoseStamped, Twist, Vector3, TransformStamped
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
-import sensor_msgs.point_cloud2 as pcl2  #https://answers.ros.org/question/207071/how-to-fill-up-a-pointcloud-message-with-data-in-python
+import sensor_msgs_py.point_cloud2 as pcl2
 
 from tools.sensors import CollisionSensor, SensorManager
 from tools.utils import FPSTimer, pack_multiarray_ros_msg, pack_df_from_multiarray_msg, pack_image_ros_msg, ROSMsgMatrix
@@ -20,22 +21,25 @@ from scipy.spatial.transform import Rotation
 QUAT_from_XYZ_to_NED = Rotation.from_euler('ZYX', np.array([90, 0, 180]), degrees=True).as_quat()  #x, y, z, w format
 
 from geometry_msgs.msg import Pose, PoseStamped
-from tf.transformations import quaternion_from_euler, euler_from_quaternion
+from tf_transformations import quaternion_from_euler, euler_from_quaternion
 
 from utils.config import log, write_shared_tmp_file
 from utils import constants
 
-import rosbag
+import rosbag2_py
+from rclpy.serialization import deserialize_message
+from rosidl_runtime_py.utilities import get_message
 
 class ComplexObject():
-    def __init__(self, world, records_dir, object_name):
+    def __init__(self, world, records_dir, object_name, node):
         self.world = world
         self.records_dir = records_dir
         self.object_name = object_name
+        self.node = node
 
         # Subscribe to the ROS topic which publishes whether the simulation has started
         self.sim_started = False
-        rospy.Subscriber("/sim_start/started", Bool, self.sim_start_callback)
+        self.sub_sim_start = self.node.create_subscription(Bool, "/sim_start/started", self.sim_start_callback, 10)
 
         # Get the directory of the pre-recorded path
         self.object_dir = self.get_dir()
@@ -90,18 +94,30 @@ class ComplexObject():
     
     def get_bag(self, relevant_topics):
         # Rosbag path
-        bag_path = os.path.join(self.object_dir, "recorded_topics.bag")
-        assert os.path.exists(bag_path), f"Rosbag not found at: {bag_path}"
+        bag_path = os.path.join(self.object_dir, "recorded_topics")  # Rosbag path (ROS2 reads the directory or database file)
+        # if not os.path.exists(bag_path): bag_path += ".mcap"  # option: compatibility check
 
         # Dictionary to store messages by topic
         bag_data = {topic: [] for topic in relevant_topics}
 
+        storage_options = rosbag2_py.StorageOptions(uri=bag_path, storage_id='mcap')
+        converter_options = rosbag2_py.ConverterOptions(input_serialization_format='cdr', output_serialization_format='cdr')
+        reader = rosbag2_py.SequentialReader()
+        reader.open(storage_options, converter_options)
+
         # Load the data
-        with rosbag.Bag(bag_path) as bag:
-            for topic, msg, t in bag.read_messages():
-                if topic in relevant_topics:
-                    bag_data[topic].append((t, msg))  # Save timestamp and message
-        
+        topic_types = reader.get_all_topics_and_types()
+        type_map = {t.name: t.type for t in topic_types}
+
+        while reader.has_next():
+            (topic, data, t_ns) = reader.read_next()
+            if topic in relevant_topics:
+                msg_type = get_message(type_map[topic])
+                msg = deserialize_message(data, msg_type)
+                # ROS2 bag time is in nanoseconds, converting to rclpy Time object or float for compatibility
+                t_obj = rclpy.time.Time(nanoseconds=t_ns)
+                bag_data[topic].append((t_obj, msg))
+
         return bag_data
     
     def get_start_time(self):
@@ -116,14 +132,15 @@ class ComplexObject():
     def sim_start_callback(self, msg):
         if msg.data and not self.sim_started:
             self.sim_started = True
-            self.sim_start_time = rospy.Time.now()
+            self.sim_start_time = self.node.get_clock().now()
 
     def update(self):
         # Retrieve the current time
-        curr_time = rospy.Time().now()
+        curr_time = self.node.get_clock().now()
 
         # Find the time delta
-        time_delta = curr_time - self.sim_start_time
+        time_delta_ns = (curr_time - self.sim_start_time).nanoseconds
+        time_delta = rclpy.duration.Duration(nanoseconds=time_delta_ns)
 
         # Add this delta to the start time of the recording
         recording_time = self.recording_start_time + time_delta
@@ -152,11 +169,15 @@ class ComplexObject():
         self.object.set_transform(transform)
     
     def get_closest_record(self, ros_time):
-        return min(self.bag[self.pose_topic], key=lambda x: abs((x[0] - ros_time).to_sec()))
+        target_ns = ros_time.nanoseconds
+        return min(self.bag[self.pose_topic], key=lambda x: abs(x[0].nanoseconds - target_ns))
+
 
 class Environment():
 
-    def __init__(self, args, client, config):
+    def __init__(self, args, client, config, node):
+
+        self.node = node
 
         self.args = args
         self.client = client
@@ -186,33 +207,33 @@ class Environment():
         self.df_msg_tracking_control = None
 
         ### ROS msg publisher init. ###
-        self.pub_vehicles_state = rospy.Publisher('/carla_node/vehicles_state', Float32MultiArray, queue_size=1)
-        self.pub_world_state    = rospy.Publisher('/carla_node/world_state', Float32MultiArray, queue_size=1)
+        self.pub_vehicles_state = self.node.create_publisher(Float32MultiArray, '/carla_node/vehicles_state', 1)
+        self.pub_world_state    = self.node.create_publisher(Float32MultiArray, '/carla_node/world_state', 1)
 
-        self.pub_camera_frame_left  = rospy.Publisher('/carla_node/cam_left/image_raw', Image, queue_size=1)
-        self.pub_camera_frame_front = rospy.Publisher('/carla_node/cam_front/image_raw',Image, queue_size=1)
-        self.pub_camera_frame_right = rospy.Publisher('/carla_node/cam_right/image_raw',Image, queue_size=1)
-        self.pub_camera_frame_back  = rospy.Publisher('/carla_node/cam_back/image_raw', Image, queue_size=1)
-        self.pub_camera_frame_up    = rospy.Publisher('/carla_node/cam_up/image_raw',   Image, queue_size=1)
-        self.pub_camera_frame_down  = rospy.Publisher('/carla_node/cam_down/image_raw', Image, queue_size=1)
+        self.pub_camera_frame_left  = self.node.create_publisher(Image, '/carla_node/cam_left/image_raw', 1)
+        self.pub_camera_frame_front = self.node.create_publisher(Image, '/carla_node/cam_front/image_raw', 1)
+        self.pub_camera_frame_right = self.node.create_publisher(Image, '/carla_node/cam_right/image_raw', 1)
+        self.pub_camera_frame_back  = self.node.create_publisher(Image, '/carla_node/cam_back/image_raw', 1)
+        self.pub_camera_frame_up    = self.node.create_publisher(Image, '/carla_node/cam_up/image_raw', 1)
+        self.pub_camera_frame_down  = self.node.create_publisher(Image, '/carla_node/cam_down/image_raw', 1)
 
-        self.pub_camera_frame_overview = rospy.Publisher('/carla_node/cam_overview/image_raw', Image, queue_size=1)
-        # self.pub_lidar_point_cloud = rospy.Publisher('/carla_node/lidar_point_cloud', PointCloud2, queue_size=1)
-        self.pub_initial_transform = rospy.Publisher('/carla_node/initial_transform',  Twist, queue_size=1)
+        self.pub_camera_frame_overview = self.node.create_publisher(Image, '/carla_node/cam_overview/image_raw', 1)
+        # self.pub_lidar_point_cloud = self.node.create_publisher(PointCloud2, '/carla_node/lidar_point_cloud', 1)
+        self.pub_initial_transform = self.node.create_publisher(Twist, '/carla_node/initial_transform', 1)
         # tf broadcaster init.
-        self.tf_broadcaster = tf.TransformBroadcaster()
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self.node)
 
         ### Multiple lidars are published. ###
-        self.pub_lidar_point_cloud_down     = rospy.Publisher('/carla_node/lidar_point_cloud_down',     PointCloud2, queue_size=10)
-        self.pub_lidar_point_cloud_up       = rospy.Publisher('/carla_node/lidar_point_cloud_up',       PointCloud2, queue_size=10)
-        self.pub_lidar_point_cloud_left     = rospy.Publisher('/carla_node/lidar_point_cloud_left',     PointCloud2, queue_size=10)
-        self.pub_lidar_point_cloud_right    = rospy.Publisher('/carla_node/lidar_point_cloud_right',    PointCloud2, queue_size=10)
-        self.pub_lidar_point_cloud_back     = rospy.Publisher('/carla_node/lidar_point_cloud_back',     PointCloud2, queue_size=10)
-        self.pub_lidar_point_cloud_forward  = rospy.Publisher('/carla_node/lidar_point_cloud_forward',  PointCloud2, queue_size=10)
+        self.pub_lidar_point_cloud_down     = self.node.create_publisher(PointCloud2, '/carla_node/lidar_point_cloud_down', 10)
+        self.pub_lidar_point_cloud_up       = self.node.create_publisher(PointCloud2, '/carla_node/lidar_point_cloud_up', 10)
+        self.pub_lidar_point_cloud_left     = self.node.create_publisher(PointCloud2, '/carla_node/lidar_point_cloud_left', 10)
+        self.pub_lidar_point_cloud_right    = self.node.create_publisher(PointCloud2, '/carla_node/lidar_point_cloud_right', 10)
+        self.pub_lidar_point_cloud_back     = self.node.create_publisher(PointCloud2, '/carla_node/lidar_point_cloud_back', 10)
+        self.pub_lidar_point_cloud_forward  = self.node.create_publisher(PointCloud2, '/carla_node/lidar_point_cloud_forward', 10)
 
         ### ROS msg Subscriber init. ###
         self.vehicle_type = self.config['ego_vehicle']['type']
-        self.sub_jax_guam_pose = rospy.Subscriber(f'/{self.vehicle_type}/pose', PoseStamped, self.callback_jax_guam_pose)
+        self.sub_jax_guam_pose = self.node.create_subscription(PoseStamped, f'/{self.vehicle_type}/pose', self.callback_jax_guam_pose, 10)
 
         ### Timer for frames per second (FPS) ###
         self.fps_timer = FPSTimer()
@@ -438,7 +459,8 @@ class Environment():
             ComplexObject(
                 self.world, 
                 self.config['adv_objects']['complex_objects']['records_dir'],
-                obj_name
+                obj_name,
+                self.node
             )
             for obj_name in self.config['adv_objects']['complex_objects']['object_names']
         ]
@@ -552,11 +574,23 @@ class Environment():
         ### Broadcast TF-vehicle from map ###
         veh_transform = self.ego_vehicle.get_transform()
         xyz, quaternion = carla_transform_to_ros_xyz_quaternion(veh_transform)
-        self.tf_broadcaster.sendTransform(xyz, quaternion, rospy.Time.now(), 'vehicle', 'map')
+        t = TransformStamped()
+        t.header.stamp = self.node.get_clock().now().to_msg()
+        t.header.frame_id = 'map'
+        t.child_frame_id = 'vehicle'
+        t.transform.translation.x, t.transform.translation.y, t.transform.translation.z = xyz
+        t.transform.rotation.x, t.transform.rotation.y, t.transform.rotation.z, t.transform.rotation.w = quaternion
+        self.tf_broadcaster.sendTransform(t)
 
         ### Broadcast TF-sensor from vehicle ###
         xyz, quaternion = carla_transform_to_ros_xyz_quaternion(self.transform_lidar_from_vehicle)
-        self.tf_broadcaster.sendTransform(xyz, quaternion, rospy.Time.now(), 'sensor', 'vehicle')
+        t = TransformStamped()
+        t.header.stamp = self.node.get_clock().now().to_msg()
+        t.header.frame_id = 'vehicle'
+        t.child_frame_id = 'sensor'
+        t.transform.translation.x, t.transform.translation.y, t.transform.translation.z = xyz
+        t.transform.rotation.x, t.transform.rotation.y, t.transform.rotation.z, t.transform.rotation.w = quaternion
+        self.tf_broadcaster.sendTransform(t)
 
 
     def publish_lidar(self):
@@ -606,7 +640,7 @@ class Environment():
 
     def publish_camera_image(self):
         header = Header()
-        header.stamp = rospy.Time.now()
+        header.stamp = self.node.get_clock().now().to_msg()
         if self.camera_left and self.camera_left.data is not None:
             self.pub_camera_frame_left.publish(pack_image_ros_msg(self.camera_left.data, header, 'left_camera'))
         if self.camera_right and self.camera_right.data is not None:

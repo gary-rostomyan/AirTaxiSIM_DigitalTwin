@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
-import rospy
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile
 
 from std_msgs.msg import Float32, Bool, Header, String, Float32MultiArray, MultiArrayDimension
 from geometry_msgs.msg import Twist, Pose, PoseStamped
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import numpy as np
-from tf.transformations import quaternion_from_euler, euler_from_quaternion
+from tf_transformations import quaternion_from_euler, euler_from_quaternion
 import argparse
 
 try:
@@ -27,19 +29,11 @@ import pandas as pd
 from tools.a_star import AStarPlanner
 
 
-### ROS Subscriber Callback ###
-VEHICLE_STATE_RECEIVED = None
-def fnc_callback(msg):
-    global VEHICLE_STATE_RECEIVED
-    VEHICLE_STATE_RECEIVED = msg
-
-
-
 FREQ = 20
 
 class InfoTextManager(object):
 
-    def __init__(self, display_man, display_pos):
+    def __init__(self, display_man, display_pos, node):
         pygame.font.init()
         self.font = pygame.font.Font(pygame.font.get_default_font(), 16)
         self.surface = None
@@ -48,12 +42,13 @@ class InfoTextManager(object):
         self.display_pos = display_pos
         self.display_man.add_sensor(self)
         self.offset = self.display_man.get_display_offset(self.display_pos)
+        self.node = node
 
-        rospy.Subscriber('/carla_node/world_state', Float32MultiArray, self.callback_world_state)
+        self.node.create_subscription(Float32MultiArray, '/carla_node/world_state', self.callback_world_state, 10)
         self.df_world_state = None
-        rospy.Subscriber('/carla_node/vehicles_state', Float32MultiArray, self.callback_vehicle_state)
+        self.node.create_subscription(Float32MultiArray, '/carla_node/vehicles_state', self.callback_vehicle_state, 10)
         self.df_world_state = None
-        rospy.Subscriber('/jaxguam/pose', PoseStamped, self.callback_guam_pose)
+        self.node.create_subscription(PoseStamped, '/jaxguam/pose', self.callback_guam_pose, 10)
         self.pose_guam_xyz = None
         self.pose_guam_euler_ypr = None
 
@@ -118,10 +113,11 @@ class InfoTextManager(object):
 
 class ROSImageListenNRenderer:
 
-    def __init__(self, display_man, sensor_type, sensor_options, display_pos, display_scale=1):
+    def __init__(self, display_man, sensor_type, sensor_options, display_pos, node, display_scale=1):
         self.surface = None
         self.display_man = display_man
         self.display_pos = display_pos
+        self.node = node
         self.subscriber = self.init_sensor(sensor_type, sensor_options)
         self.sensor_options = sensor_options
         self.display_man.add_sensor(self)
@@ -131,7 +127,7 @@ class ROSImageListenNRenderer:
 
     def init_sensor(self, sensor_type, sensor_options):
         if sensor_type == 'ROSSubimage':
-            return rospy.Subscriber(sensor_options['ros_topic'], Image, self.save_ros_image)   # subscriber init.
+            return self.node.create_subscription(Image, sensor_options['ros_topic'], self.save_ros_image, 10)   # subscriber init.
         else:
             return None
 
@@ -158,41 +154,52 @@ def run_input_node(args):
     matrix_msg = ROSMsgMatrix()
 
     # rosnode node initialization
-    rospy.init_node('display_node')
+    rclpy.init(args=None)
+    node = rclpy.create_node('display_node')
 
     # Running rate
-    rate=rospy.Rate(FREQ)
+    rate = node.create_rate(FREQ)
 
     # Getting the world and
     display_man = DisplayManager(grid_size=[3, 5], window_size=[args.width, args.height])
 
-    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic':'/carla_node/cam_overview/image_raw'}, display_pos=[0, 4], display_scale=1)
-    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic':'/carla_node/cam_front/image_raw'}, display_pos=[1, 3])
-    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic':'/carla_node/cam_left/image_raw'}, display_pos=[1, 2])
-    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic':'/carla_node/cam_right/image_raw'}, display_pos=[1, 4])
-    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic':'/carla_node/cam_back/image_raw'}, display_pos=[2, 3])
-    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic':'/carla_node/cam_up/image_raw'}, display_pos=[0, 3])
-    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic':'/carla_node/cam_down/image_raw'}, display_pos=[0, 2])
-    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic':'/yolo_node/sort_mot_frame'}, display_pos=[0, 0])
-    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic':'/yolo_node/yolo_pred_frame'}, display_pos=[0, 1])
-
-    map_listen_renderer = ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic':'/path_planner/map_image'}, display_pos=[0, 0], display_scale=2)
+    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic': '/carla_node/cam_overview/image_raw'},
+                            display_pos=[0, 4], node=node, display_scale=1)
+    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic': '/carla_node/cam_front/image_raw'},
+                            display_pos=[1, 3], node=node)
+    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic': '/carla_node/cam_left/image_raw'},
+                            display_pos=[1, 2], node=node)
+    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic': '/carla_node/cam_right/image_raw'},
+                            display_pos=[1, 4], node=node)
+    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic': '/carla_node/cam_back/image_raw'},
+                            display_pos=[2, 3], node=node)
+    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic': '/carla_node/cam_up/image_raw'},
+                            display_pos=[0, 3], node=node)
+    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic': '/carla_node/cam_down/image_raw'},
+                            display_pos=[0, 2], node=node)
+    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic': '/yolo_node/sort_mot_frame'}, display_pos=[0, 0],
+                            node=node)
+    ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic': '/yolo_node/yolo_pred_frame'}, display_pos=[0, 1],
+                            node=node)
+    map_listen_renderer = ROSImageListenNRenderer(display_man, 'ROSSubimage', {'ros_topic':'/path_planner/map_image'}, display_pos=[0, 0], node=node, display_scale=2)
 
 
 
     # subscriber init.
 
     # vehicle state
-    pub_control_state   = rospy.Publisher('/display_node/control_cmd', Twist, queue_size=1)
-    pub_target_position = rospy.Publisher('/display_node/target_pos', Twist, queue_size=1)
+    pub_control_state   = node.create_publisher(Twist, '/display_node/control_cmd', 1)
+    pub_target_position = node.create_publisher(Twist, '/display_node/target_pos', 1)
 
-    infotext_manager = InfoTextManager(display_man, display_pos=[2, 0])
+    infotext_manager = InfoTextManager(display_man, display_pos=[2, 0], node=node)
 
     input_control = InputControl()
     client_clock = pygame.time.Clock()
 
 
-    while not rospy.is_shutdown():
+    while rclpy.ok():
+        rclpy.spin_once(node, timeout_sec=0)
+
         client_clock.tick_busy_loop(FREQ)
         display_man.render()
         input_control.tick(client_clock)
@@ -232,6 +239,9 @@ def run_input_node(args):
         # Sleep for Set Rate
         rate.sleep()
 
+    node.destroy_node()
+    rclpy.shutdown()
+
 
 def main():
     argparser = argparse.ArgumentParser(
@@ -256,5 +266,5 @@ if __name__ == '__main__':
 
     try:
         main()
-    except rospy.ROSInterruptException:
-        pass
+    except Exception as e:
+        print(e)
