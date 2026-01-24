@@ -115,7 +115,7 @@
 - [x] Planner (`path_planner/planner/`)
 - [x] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
 - [x] Mapper
-- [ ] Verifiable OD
+- [x] Verifiable OD
 - [ ] ~~yolov5~~ (broken submodule)
 - [x] sim_control
 - [ ] ~~jaxguam~~ (broken submodule)
@@ -128,7 +128,7 @@
 - [x] Planner (`path_planner/planner/`)
 - [x] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
 - [x] Mapper
-- [ ] Verifiable OD
+- [x] Verifiable OD
 - [ ] ~~yolov5~~ (broken submodule)
 - [x] sim_control
 - [ ] ~~jaxguam~~ (broken submodule)

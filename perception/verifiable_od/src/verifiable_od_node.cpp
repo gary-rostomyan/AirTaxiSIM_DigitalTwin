@@ -113,7 +113,8 @@ public:
       rviz_cube.color.g = (float)(i/3%3+1)/3;
       rviz_cube.color.b = (float)(i/9%3+1)/3;
       rviz_cube.color.a = 0.4;
-      rviz_cube.lifetime = rclcpp::Duration::from_seconds(0.18).to_msg();
+      rviz_cube.lifetime.sec = 0;
+      rviz_cube.lifetime.nanosec = 180000000;  // 0.18 seconds
       rviz_bounding_boxes.markers.push_back(rviz_cube);
 
       i++;
@@ -139,8 +140,8 @@ public:
     point_min_num_threshold_ = 5;
 
     // TODO: change dir?
-    depth_clustering_config_file_name_ = "/catkin_ws/src/verifiable_od/src/cfg/depth_clustering_config_64.json";
-    depth_clustering_log_directory_ = "/catkin_ws/src/verifiable_od/src/log";
+    depth_clustering_config_file_name_ = "/colcon_ws/install/verifiable_od/share/verifiable_od/cfg/depth_clustering_config_64.json";
+    depth_clustering_log_directory_ = "/colcon_ws/log/verifiable_od";
     // need to change the directories above!!!
 
     depth_clustering_ = std::make_shared<depth_clustering::DepthClustering>();
