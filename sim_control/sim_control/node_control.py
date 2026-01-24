@@ -74,6 +74,9 @@ class SimControl:
         self.node.destroy_node()
         rclpy.shutdown()
 
-if __name__ == "__main__":
+def main():
     controller = SimControl()
     controller.run()
+
+if __name__ == "__main__":
+    main()

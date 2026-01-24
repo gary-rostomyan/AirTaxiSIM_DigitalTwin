@@ -1,8 +1,9 @@
 start_delay: 1
 ros:
-  workspace: /catkin_ws
+  workspace: /colcon_ws
   ros_package: sim_control
+  ros_version: 2
   rosrun_files:
-  - node_recorder.py
-  - node_sim_start.py
-  - node_control.py
+    - node_recorder
+    - node_sim_start
+    - node_control

@@ -51,9 +51,12 @@ class SimStart(Node):
             self.rate.sleep()
 
 
-if __name__ == "__main__":
+def main():
     rclpy.init()
     simstart = SimStart()
     simstart.run()
     simstart.destroy_node()
     rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()
