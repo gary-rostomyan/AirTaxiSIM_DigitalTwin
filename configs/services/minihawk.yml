@@ -1,7 +1,7 @@
 start_delay: 1
 ros:
-  workspace: /catkin_ws
+  workspace: /colcon_ws
   ros_package: minihawk
+  ros_version: 2
   rosrun_files:
-    - node_vehicle.py
-    # - node_planner.py
+    - node_vehicle
