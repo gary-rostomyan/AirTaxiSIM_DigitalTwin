@@ -107,7 +107,10 @@ class TopicRecorder(Node):
         except KeyboardInterrupt:
             self.terminate()
 
-if __name__ == "__main__":
+def main():
     recorder = TopicRecorder()
     if recorder.recording_requested:
         recorder.run()
+
+if __name__ == "__main__":
+    main()

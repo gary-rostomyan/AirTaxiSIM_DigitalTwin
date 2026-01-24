@@ -65,17 +65,18 @@ services:
       context: ../sim_control
       dockerfile: Dockerfile
     volumes:
-        - ../sim_control:/catkin_ws/src/sim_control
-        - ../utils:/catkin_ws/src/sim_control/script/utils
+        - ../sim_control:/colcon_ws/src/sim_control
+        - ../utils:/colcon_ws/src/utils
     privileged: true
     network_mode: host
     tty: true
     stdin_open: true
     # depends_on:
     #   - roscore
-    working_dir: /catkin_ws/src/sim_control
+    working_dir: /colcon_ws
     environment:
       - SERVICE_NAME=sim_control
+      - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
 
   jaxguam:
     container_name: jaxguam

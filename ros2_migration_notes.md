@@ -109,9 +109,27 @@
 
 
 ### Module Update
-- [x] Minihawk
 - [x] Ground Station
+- [x] Octomap Server
+- [ ] rraaa
+- [ ] Planner (`path_planner/planner/`)
+- [ ] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
+- [ ] Mapper
+- [ ] Verifiable OD
+- [ ] ~~yolov5~~ (broken submodule)
+- [x] sim_control
+- [ ] ~~jaxguam~~ (broken submodule)
+- [x] Minihawk
 
 ### Module Update Test (Constructing Node)
-- [x] Minihawk
 - [x] Ground Station
+- [x] Octomap Server
+- [ ] rraaa
+- [ ] Planner (`path_planner/planner/`)
+- [ ] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
+- [ ] Mapper
+- [ ] Verifiable OD
+- [ ] ~~yolov5~~ (broken submodule)
+- [x] sim_control
+- [ ] ~~jaxguam~~ (broken submodule)
+- [x] Minihawk
