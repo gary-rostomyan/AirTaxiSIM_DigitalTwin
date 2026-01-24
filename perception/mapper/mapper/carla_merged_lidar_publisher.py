@@ -13,6 +13,8 @@ class CarlaMultiLidarMerger(Node):
     def __init__(self):
         super().__init__('carla_merged_lidar_publisher')
 
+        self.get_logger().info('CarlaMultiLidarMerger node starting...')
+
         self.lock = threading.Lock()
         self.latest_clouds = {}
 
@@ -59,12 +61,17 @@ class CarlaMultiLidarMerger(Node):
                 merged_cloud = pcl2.create_cloud_xyz32(header, all_points)
                 self.pub_merged.publish(merged_cloud)
 
-if __name__ == '__main__':
-    rclpy.init()
+def main(args=None):
+    rclpy.init(args=args)
     try:
         node = CarlaMultiLidarMerger()
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
     finally:
+        node.destroy_node()
         rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
