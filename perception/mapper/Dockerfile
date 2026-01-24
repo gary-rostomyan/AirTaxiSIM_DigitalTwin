@@ -1,30 +1,24 @@
-FROM ros:noetic
+FROM ros:humble
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update --fix-missing
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3-pip
+    python3-pip \
+    python3-colcon-common-extensions \
+    ros-humble-std-msgs \
+    ros-humble-sensor-msgs \
+    ros-humble-sensor-msgs-py \
+    ros-humble-octomap \
+    ros-humble-octomap-msgs \
+    ros-humble-octomap-server
 
 RUN apt-get -y install libc-dev libx11-dev libgl1-mesa-glx libxrender1
 RUN apt-get -y install build-essential
-RUN pip3 install -U pip
+RUN pip install -U pip
+RUN pip install numpy
 
-# Copy the files
-COPY . /catkin_ws/src/mapper
+RUN mkdir -p /colcon_ws/src
+WORKDIR /colcon_ws
 
-# Source ROS
-RUN echo "source /opt/ros/noetic/setup.bash" > ~/.bashrc
-
-# Install required packages for octomap server
-RUN apt-get update && apt-get install -y ros-noetic-octomap \
-    ros-noetic-octomap-ros \
-    ros-noetic-octomap-msgs \
-    ros-noetic-octomap-server
-
-# Build 
-WORKDIR /catkin_ws
-RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && cd /catkin_ws && catkin_make"
-
-# Source the built package
-RUN echo "source /catkin_ws/devel/setup.bash" > ~/.bashrc
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc

@@ -114,7 +114,7 @@
 - [ ] rraaa
 - [x] Planner (`path_planner/planner/`)
 - [x] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
-- [ ] Mapper
+- [x] Mapper
 - [ ] Verifiable OD
 - [ ] ~~yolov5~~ (broken submodule)
 - [x] sim_control
@@ -127,7 +127,7 @@
 - [ ] rraaa
 - [x] Planner (`path_planner/planner/`)
 - [x] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
-- [ ] Mapper
+- [x] Mapper
 - [ ] Verifiable OD
 - [ ] ~~yolov5~~ (broken submodule)
 - [x] sim_control
