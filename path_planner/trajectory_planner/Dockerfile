@@ -1,20 +1,19 @@
-FROM ros:noetic
+FROM ros:humble
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl software-properties-common
-RUN apt install -y python3-pip
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Copy the RRT Planner code
-COPY ./rrt_planner /catkin_ws/src/rrt_planner
+RUN apt-get update --fix-missing
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-pip \
+    python3-colcon-common-extensions \
+    ros-humble-std-msgs \
+    ros-humble-sensor-msgs \
+    ros-humble-geometry-msgs
 
-# Source ROS
-RUN echo "source /opt/ros/noetic/setup.bash" > ~/.bashrc
+RUN pip install -U pip
+RUN pip install loguru matplotlib scipy
 
-# Install required packages
-RUN pip3 install loguru matplotlib scipy
+RUN mkdir -p /colcon_ws/src
+WORKDIR /colcon_ws
 
-# Catkin make
-WORKDIR /catkin_ws
-RUN bash -c "source /opt/ros/noetic/setup.bash && cd /catkin_ws && catkin_make"
-
-# Source the built environment
-RUN echo "source /catkin_ws/devel/setup.bash" > ~/.bashrc
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc

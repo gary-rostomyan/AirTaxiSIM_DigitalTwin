@@ -191,8 +191,8 @@ services:
       context: ../path_planner/trajectory_planner
       dockerfile: Dockerfile
     volumes:
-        - ../path_planner/trajectory_planner/rrt_planner:/catkin_ws/src/rrt_planner
-        - ../utils:/catkin_ws/src/rrt_planner/script/utils
+        - ../path_planner/trajectory_planner/rrt_planner:/colcon_ws/src/rrt_planner
+        - ../utils:/colcon_ws/src/utils
     privileged: true
     network_mode: host
     devices:
@@ -201,9 +201,10 @@ services:
     stdin_open: true
     # depends_on:
     #   - roscore
-    working_dir: /catkin_ws/
+    working_dir: /colcon_ws
     environment:
       - SERVICE_NAME=rrt_planner
+      - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
 
   verifiable_od:
     container_name: verifiable_od

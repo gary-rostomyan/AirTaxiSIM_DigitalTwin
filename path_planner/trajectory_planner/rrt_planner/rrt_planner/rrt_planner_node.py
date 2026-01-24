@@ -14,11 +14,10 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Circle, Rectangle
 from matplotlib.collections import LineCollection
 
-sys.path.append(os.path.abspath('/catkin_ws/src/scripts/utils'))
 from utils import constants
 from utils.config import load_yaml_file, log
 
-import sensor_msgs.point_cloud2 as pc2
+from sensor_msgs_py import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Float32MultiArray
 from geometry_msgs.msg import Twist, PoseStamped
@@ -445,23 +444,23 @@ class RRTPlannerNode(ROSNode):
             # Publish the current waypoint
             message = Float32MultiArray()
             message.data = [
-                self.path[self.waypoint_counter][0],
-                self.path[self.waypoint_counter][1],
-                self.path[self.waypoint_counter][2],
-                0,
-                0,
-                0
+                float(self.path[self.waypoint_counter][0]),
+                float(self.path[self.waypoint_counter][1]),
+                float(self.path[self.waypoint_counter][2]),
+                0.0,
+                0.0,
+                0.0
             ]
 
             # Run some pre-checks
             if time.time() - start_time < 5:
                 message.data = [
-                    self.config['ego_vehicle']['location']['x'],
-                    self.config['ego_vehicle']['location']['y'],
-                    self.config['ego_vehicle']['location']['z'],
-                    0,
-                    0,
-                    0
+                    float(self.config['ego_vehicle']['location']['x']),
+                    float(self.config['ego_vehicle']['location']['y']),
+                    float(self.config['ego_vehicle']['location']['z']),
+                    0.0,
+                    0.0,
+                    0.0
                 ]
 
             # Publish the data
