@@ -113,7 +113,7 @@
 - [x] Octomap Server
 - [ ] rraaa
 - [x] Planner (`path_planner/planner/`)
-- [ ] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
+- [x] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
 - [ ] Mapper
 - [ ] Verifiable OD
 - [ ] ~~yolov5~~ (broken submodule)
@@ -126,7 +126,7 @@
 - [x] Octomap Server
 - [ ] rraaa
 - [x] Planner (`path_planner/planner/`)
-- [ ] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
+- [x] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
 - [ ] Mapper
 - [ ] Verifiable OD
 - [ ] ~~yolov5~~ (broken submodule)
