@@ -112,7 +112,7 @@
 - [x] Ground Station
 - [x] Octomap Server
 - [ ] rraaa
-- [ ] Planner (`path_planner/planner/`)
+- [x] Planner (`path_planner/planner/`)
 - [ ] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
 - [ ] Mapper
 - [ ] Verifiable OD
@@ -125,7 +125,7 @@
 - [x] Ground Station
 - [x] Octomap Server
 - [ ] rraaa
-- [ ] Planner (`path_planner/planner/`)
+- [x] Planner (`path_planner/planner/`)
 - [ ] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
 - [ ] Mapper
 - [ ] Verifiable OD

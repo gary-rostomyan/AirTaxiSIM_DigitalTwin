@@ -5,7 +5,8 @@ from utils import constants
 from utils.planner import PathPlanner
 from loguru import logger
 
-if __name__ == "__main__":
+
+def main():
     logger.info("Starting the planning node...")
     
     # Load the config
@@ -18,3 +19,7 @@ if __name__ == "__main__":
 
     # Run the planner
     planner.run()
+
+
+if __name__ == "__main__":
+    main()
