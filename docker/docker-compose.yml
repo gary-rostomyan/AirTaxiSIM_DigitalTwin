@@ -104,8 +104,8 @@ services:
       dockerfile: Dockerfile
     volumes:
         - /tmp/.X11-unix:/tmp/.X11-unix:rw
-        - ../vehicles/minihawk:/catkin_ws/src/minihawk
-        - ../utils:/catkin_ws/src/minihawk/script/utils
+        - ../vehicles/minihawk:/colcon_ws/src/minihawk
+        - ../utils:/colcon_ws/src/utils
     privileged: true
     network_mode: host
     devices:
@@ -114,11 +114,12 @@ services:
     stdin_open: true
     # depends_on:
     #   - roscore
-    working_dir: /catkin_ws/src/minihawk
+    working_dir: /colcon_ws
     environment:
       - SERVICE_NAME=minihawk
       - SDL_VIDEODRIVER=x11
       - DISPLAY=$DISPLAY
+      - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
 
   yolov5:
     container_name: yolov5
@@ -147,8 +148,8 @@ services:
       context: ../ground_station
       dockerfile: Dockerfile
     volumes:
-        - ../ground_station:/catkin_ws/src/ground_station
-        - ../utils:/catkin_ws/src/ground_station/script/utils
+        - ../ground_station:/colcon_ws/src/ground_station
+        - ../utils:/colcon_ws/src/utils
     privileged: true
     network_mode: host
     devices:
@@ -157,9 +158,10 @@ services:
     stdin_open: true
     # depends_on:
     #   - roscore
-    working_dir: /catkin_ws/src/ground_station
+    working_dir: /colcon_ws
     environment:
       - SERVICE_NAME=ground_station
+      - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
 
   path_planner:
     container_name: path_planner

@@ -90,19 +90,27 @@ class MiniHawk_Node(Vehicle_Node):
         pass
 
 
-if __name__ == "__main__":
-    rclpy.init(args=None)
-
-    config = load_yaml_file(constants.merged_config_path, __file__)
-    vehicle_type = config['ego_vehicle']['type']
-    assert vehicle_type == 'minihawk', "This node only supports MiniHawk vehicle."
+def main(args=None):
+    rclpy.init(args=args)
 
     try:
+        config = load_yaml_file(constants.merged_config_path, __file__)
+        vehicle_type = config['ego_vehicle']['type']
+        assert vehicle_type == 'minihawk', "This node only supports MiniHawk vehicle."
+
         minihawk_node = MiniHawk_Node(config)
+        minihawk_node.get_logger().info(f"Starting spin...")
         rclpy.spin(minihawk_node)
     except KeyboardInterrupt:
         pass
+    except Exception as e:
+        rclpy.logging.get_logger('minihawk_main').error(f"Error in minihawk node: {e}")
     finally:
         if 'minihawk_node' in locals():
             minihawk_node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

@@ -5,6 +5,10 @@
 #### `doc` (does not need to be updated)
 
 #### `docker`
+- [ ] `docker-compose.yml`
+  - [x] `minihawk`
+  - [x] `ground_station`
+- [ ] `Dockerfile.roscore` - should be deleted when update completes
 
 #### `env_sim/octomap_server`
 - [x] **already updated** - please refer to: [`https://github.com/OctoMap/octomap_mapping`](https://github.com/OctoMap/octomap_mapping)
@@ -25,9 +29,9 @@
 
 #### `ground_station/script`
 - [x] `node_target.py`
-- [ ] `CMakeLists.txt`
-- [ ] `Dockerfile`
-- [ ] `package.xml`
+- [x] `CMakeLists.txt`
+- [x] `Dockerfile`
+- [x] `package.xml`
 
 #### `media` (does not need to be updated)
 
@@ -77,8 +81,9 @@
 #### `tests` (does not need to be updated)
 
 #### `utils` (some need to be updated)
+- [x] `docker.py`
 - [x] `min_safety_verifier.py`
-- [ ] `planner.py` (this requires an extensive update!)
+- [x] `planner.py` (this requires an extensive update!)
 - [ ] ~~`ros.py`~~ (deprecated)
 - [x] `vehicle.py`
 
@@ -95,11 +100,18 @@
 
 #### `vehicles/minihawk`
 - [x] `script/node_vehicle.py`
-- [ ] `CMakeLists.txt`
-- [ ] `Dockerfile`
-- [ ] `package.xml`
+- [x] `CMakeLists.txt`
+- [x] `Dockerfile`
+- [x] `package.xml`
 
 #### Root Dir
 - [x] `rraaa.py`
 
 
+### Module Update
+- [x] Minihawk
+- [x] Ground Station
+
+### Module Update Test (Constructing Node)
+- [x] Minihawk
+- [x] Ground Station
