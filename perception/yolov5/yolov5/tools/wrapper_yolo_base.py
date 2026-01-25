@@ -7,11 +7,13 @@ import subprocess
 
 import sys, os
 
-sys.path.append('/catkin_ws/src/yolov5')
-sys.path.append('/catkin_ws/src/yolov5/yolov5')
+# Add yolov5_lib to path from environment variable (set in docker-compose.yml)
+YOLOV5_LIB_DIR = os.environ.get('YOLOV5_LIB_DIR',
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'yolov5_lib'))
+sys.path.insert(0, YOLOV5_LIB_DIR)
 
-from yolov5.models.experimental import attempt_load
-from yolov5.utils.general import non_max_suppression, xyxy2xywh
+from models.experimental import attempt_load
+from utils.general import non_max_suppression, xyxy2xywh
 
 from PIL import Image
 

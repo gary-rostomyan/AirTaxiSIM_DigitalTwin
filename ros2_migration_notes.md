@@ -116,7 +116,7 @@
 - [x] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
 - [x] Mapper
 - [x] Verifiable OD
-- [ ] ~~yolov5~~ (broken submodule)
+- [x] yolov5
 - [x] sim_control
 - [ ] ~~jaxguam~~ (broken submodule)
 - [x] Minihawk
@@ -129,7 +129,7 @@
 - [x] RRT Planner (`path_planner/trajectory_planner/rrt_planner/`)
 - [x] Mapper
 - [x] Verifiable OD
-- [ ] ~~yolov5~~ (broken submodule)
+- [x] yolov5
 - [x] sim_control
 - [ ] ~~jaxguam~~ (broken submodule)
 - [x] Minihawk

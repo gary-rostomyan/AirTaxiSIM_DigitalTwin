@@ -1,5 +1,5 @@
-[submodule "perception/yolov5/yolov5"]
-	path = perception/yolov5/yolov5
+[submodule "perception/yolov5/yolov5_lib"]
+	path = perception/yolov5/yolov5_lib
 	url = git@github.com:ultralytics/yolov5.git
 [submodule "vehicles/jaxguam/jax_guam"]
 	path = vehicles/jaxguam/jax_guam
