@@ -13,8 +13,8 @@ from std_msgs.msg import Float32MultiArray        # See https://gist.github.com/
 from std_msgs.msg import MultiArrayDimension      # See http://docs.ros.org/api/std_msgs/html/msg/MultiArrayLayout.html
 from cv_bridge import CvBridge
 
-from tools.msgpacking import init_matrix_array_ros_msg, pack_multiarray_ros_msg
-from tools.sort import Sort
+from yolov5.tools.msgpacking import init_matrix_array_ros_msg, pack_multiarray_ros_msg
+from yolov5.tools.sort import Sort
 
 import torch
 import numpy as np
@@ -58,15 +58,12 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 print(os.getcwd())
 
-yolo_directory = os.path.expanduser('~/../catkin_ws/src/yolov5/models')
+# Models directory from environment variable (set in docker-compose.yml)
+yolo_directory = os.environ.get('YOLOV5_MODELS_DIR', 
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'models'))
 
 yolo_path = get_latest_model(yolo_directory)
 print(f"Latest model loaded: {os.path.basename(yolo_path)}")
-
-
-
-#changes made for bayesian OPT Looping
-#yolo_path = os.path.expanduser('~/../catkin_ws/src/yolov5/models/best.pt')
 
 YOLO_MODEL = YOLO(yolo_path) # Yolo v8
 # YOLO_MODEL = YOLO("yolo_param/tasnim/best1.pt") # <--- This is Yolo v5

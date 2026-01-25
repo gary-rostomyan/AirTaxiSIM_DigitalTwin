@@ -128,20 +128,20 @@ services:
       context: ../perception/yolov5
       dockerfile: Dockerfile
     volumes:
-        - ../perception/yolov5:/catkin_ws/src/yolov5
-        - ../utils:/catkin_ws/src/yolov5/script/utils
-        - ../perception/yolov5/yolov5s.pt:/catkin_ws/yolo_param/yolov5s.pt
+        - ../perception/yolov5:/colcon_ws/src/yolov5
+        - ../utils:/colcon_ws/src/utils
     privileged: true
     network_mode: host
     devices:
       - "/dev/snd"
     tty: true
     stdin_open: true
-    # depends_on:
-    #   - roscore
-    working_dir: /catkin_ws/src/yolov5
+    working_dir: /colcon_ws/src/yolov5
     environment:
       - SERVICE_NAME=yolov5
+      - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
+      - YOLOV5_MODELS_DIR=/colcon_ws/src/yolov5/models
+      - YOLOV5_LIB_DIR=/colcon_ws/src/yolov5/yolov5_lib
 
   ground_station:
     container_name: ground_station

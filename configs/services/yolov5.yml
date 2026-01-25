@@ -1,6 +1,7 @@
 start_delay: 1
 ros:
-  workspace: /catkin_ws
+  workspace: /colcon_ws
   ros_package: yolov5
+  ros_version: 2
   rosrun_files:
-  - node_yolo.py
+    - node_yolo
