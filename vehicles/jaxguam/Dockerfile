@@ -1,4 +1,4 @@
-FROM ros:noetic
+FROM ros:humble
 
 ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
 ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
@@ -9,31 +9,45 @@ RUN apt-get update && apt-get install -y \
     software-properties-common \
     build-essential \
     curl \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python 3.10 and set it as default
-RUN add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get update && apt-get install -y python3.10 python3.10-distutils python3.10-venv && \
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
+RUN pip install -U pip
+RUN pip install --upgrade --force-reinstall attrs
+RUN pip install \
+    numpy \
+    pandas \
+    scipy \
+    matplotlib \
+    jax \
+    jaxtyping \
+    attrs \
+    loguru \
+    tqdm \
+    ipdb \
+    extensisq \
+    typing_extensions
 
-# Install pip for Python 3.10
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
-
-# Install NumPy and loguru
-RUN python3.10 -m pip install --upgrade pip
-RUN pip3 install numpy loguru
-
+# Copy and install jax_guam package
 COPY jax_guam /jax_guam
 WORKDIR /jax_guam
 RUN pip install -e .
 
-# Set up ROS environment
-ENV ROS_DISTRO=noetic
-ENV ROS_ROOT=/opt/ros/noetic
-ENV ROS_PACKAGE_PATH=$ROS_ROOT/share
-ENV PATH=$ROS_ROOT/bin:$PATH
-ENV PYTHONPATH=$ROS_ROOT/lib/python3/dist-packages:$PYTHONPATH
-ENV LD_LIBRARY_PATH=$ROS_ROOT/lib:$LD_LIBRARY_PATH
+# Set up ROS 2 environment
+ENV ROS_DISTRO=humble
+SHELL ["/bin/bash", "-c"]
 
-RUN mkdir -p /catkin_ws/src
+# Create ROS 2 workspace
+RUN mkdir -p /colcon_ws/src
 
+# Copy the ROS 2 package
+COPY . /colcon_ws/src/jaxguam
+WORKDIR /colcon_ws
+
+# Build the ROS 2 package
+RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
+    colcon build --packages-select jaxguam
+
+# Source the workspace on container start
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
+RUN echo "source /colcon_ws/install/setup.bash" >> /root/.bashrc
