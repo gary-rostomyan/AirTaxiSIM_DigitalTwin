@@ -118,7 +118,7 @@
 - [x] Verifiable OD
 - [x] yolov5
 - [x] sim_control
-- [ ] ~~jaxguam~~ (broken submodule)
+- [x] jaxguam
 - [x] Minihawk
 
 ### Module Update Test (Constructing Node)
@@ -131,5 +131,5 @@
 - [x] Verifiable OD
 - [x] yolov5
 - [x] sim_control
-- [ ] ~~jaxguam~~ (broken submodule)
+- [x] jaxguam
 - [x] Minihawk

@@ -84,19 +84,18 @@ services:
       context: ../vehicles/jaxguam
       dockerfile: Dockerfile
     volumes:
-        - ../vehicles/jaxguam:/catkin_ws/src/jaxguam
-        - ../utils:/catkin_ws/src/jaxguam/script/utils
+        - ../vehicles/jaxguam:/colcon_ws/src/jaxguam
+        - ../utils:/colcon_ws/src/utils
     privileged: true
     network_mode: host
     devices:
       - "/dev/snd"
     tty: true
     stdin_open: true
-    # depends_on:
-    #   - roscore
-    working_dir: /catkin_ws/src/jax_guam
+    working_dir: /colcon_ws
     environment:
       - SERVICE_NAME=jaxguam
+      - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
   
   minihawk:
     container_name: minihawk

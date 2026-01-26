@@ -188,8 +188,8 @@ class GUAM_Node(Vehicle_Node):
         else:
             simulate_batch(self, b_state)
 
-if __name__ == "__main__":
-    rclpy.init()
+def main(args=None):
+    rclpy.init(args=args)
 
     config = load_yaml_file(constants.merged_config_path, __file__)
 
@@ -212,3 +212,7 @@ if __name__ == "__main__":
     if vehicle_type == 'guam' and config['ego_vehicle']['plot']:
         logger.info("Ploting...")
         plot_batch_with_ref(save_video=config['ego_vehicle']['save_video'])
+
+
+if __name__ == "__main__":
+    main()
