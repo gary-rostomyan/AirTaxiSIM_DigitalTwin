@@ -87,12 +87,6 @@ class ROSContainer(DockerContainer):
         self.workspace_path = service_config['ros']['workspace']
         self.ros_package = service_config['ros']['ros_package']
 
-        # ROS version: 1 for ROS 1 (noetic), 2 for ROS 2 (humble). Default to 1 for backward compatibility.
-        try:
-            self.ros_version = int(service_config['ros']['ros_version'])
-        except KeyError:
-            self.ros_version = 1
-
         try:
             self.launch_file = service_config['ros']['launch_file']
         except KeyError:
@@ -104,38 +98,26 @@ class ROSContainer(DockerContainer):
             self.rosrun_files = None
 
     def build_workspace(self):
-        if self.ros_version == 2:
-            ros_command = f"cd {self.workspace_path} && source /opt/ros/humble/setup.bash && colcon build --symlink-install"
-        else:
-            ros_command = f"cd {self.workspace_path} && source /opt/ros/noetic/setup.bash && catkin_make"
-        log.info(f"Building {self.ros_package} (ROS {self.ros_version}) in service {self.service_name}")
+        ros_command = f"cd {self.workspace_path} && source /opt/ros/humble/setup.bash && colcon build --symlink-install"
+        log.info(f"Building {self.ros_package} (ROS 2) in service {self.service_name}")
         self.run_command_in_service(ros_command)
 
     def run_ros_command(self, command, background = False):
-        if self.ros_version == 2:
-            ros_command = f"cd {self.workspace_path} && source install/setup.bash && {command}"
-        else:
-            ros_command = f"cd {self.workspace_path} && source devel/setup.bash && {command}"
-        log.info(f"Running ROS {self.ros_version} command in service {self.service_name}: {ros_command}")
+        ros_command = f"cd {self.workspace_path} && source install/setup.bash && {command}"
+        log.info(f"Running ROS 2 command in service {self.service_name}: {ros_command}")
         return self.run_command_in_service(ros_command, background)
 
     def roslaunch(self, target):
-        if self.ros_version == 2:
-            self.processes.append(self.run_ros_command(f"ros2 launch {self.ros_package} {target}", background=True))
-        else:
-            self.processes.append(self.run_ros_command(f"roslaunch {self.ros_package} {target}", background=True))
+        self.processes.append(self.run_ros_command(f"ros2 launch {self.ros_package} {target}", background=True))
 
     def rosrun(self, target):
-        if self.ros_version == 2:
-            self.processes.append(self.run_ros_command(f"ros2 run {self.ros_package} {target}", background=True))
-        else:
-            self.processes.append(self.run_ros_command(f"rosrun {self.ros_package} {target}", background=True))
+        self.processes.append(self.run_ros_command(f"ros2 run {self.ros_package} {target}", background=True))
 
     def run_all(self):
         if self.launch_file:
             self.roslaunch(self.launch_file)
 
-            # Delay helps avoid ROS Master conflicts (ROS 1) or aids DDS discovery (ROS 2).
+            # Delay aids DDS discovery.
             time.sleep(1)
         elif self.rosrun_files:
             for script in self.rosrun_files:

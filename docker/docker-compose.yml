@@ -1,13 +1,4 @@
 services:
-  # roscore:
-  #   container_name: roscore
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.roscore
-  #   privileged: true
-  #   network_mode: host
-  #   command: /bin/bash -c 'source /opt/ros/noetic/setup.bash && roscore'
-
   carla:
         image: stargaze0909/carla_uli_ubuntu20:latest
         logging:
@@ -44,20 +35,20 @@ services:
     environment:
       - DISPLAY=${DISPLAY}
       - SERVICE_NAME=env_sim
+      - SDL_VIDEODRIVER=x11
+      - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
     volumes:
         - /tmp/.X11-unix:/tmp/.X11-unix:rw
-        - ../env_sim:/catkin_ws/src/env_sim
-        - ../utils:/catkin_ws/src/env_sim/rraaa/script/utils
-        - ../records:/catkin_ws/src/env_sim/rraaa/script/records
+        - ../env_sim:/colcon_ws/src/env_sim
+        - ../utils:/colcon_ws/src/utils
+        - ../records:/colcon_ws/src/env_sim/rraaa/script/records
     privileged: true
     network_mode: host
     devices:
       - "/dev/snd"
     tty: true
     stdin_open: true
-    # depends_on:
-    #   - roscore
-    working_dir: /catkin_ws/src/env_sim
+    working_dir: /colcon_ws
 
   sim_control:
     container_name: sim_control

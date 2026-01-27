@@ -1,8 +1,9 @@
 start_delay: 1
 ros:
-  workspace: /catkin_ws
+  workspace: /colcon_ws
   ros_package: rraaa
-  launch_file: run.launch
+  ros_version: 2
+  launch_file: rraaa.launch.py
 weather:
       weather_flag: default       # Options: 'default' or 'custom'
       lighting_flag: default       # Options: 'default' or 'custom'

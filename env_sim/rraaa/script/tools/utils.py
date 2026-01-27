@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from std_msgs.msg import Float32MultiArray        # See https://gist.github.com/jarvisschultz/7a886ed2714fac9f5226
 from std_msgs.msg import MultiArrayDimension      # See http://docs.ros.org/api/std_msgs/html/msg/MultiArrayLayout.html
-import tf
+from tf_transformations import quaternion_from_euler
 
 class FPSTimer(object):
 
@@ -98,6 +98,6 @@ def carla_transform_to_ros_xyz_quaternion(transform):
     rotation = transform.rotation
     x, y, z = (location.x, location.y, location.z)
     pitch, yaw, roll = (rotation.pitch, rotation.yaw, rotation.roll)
-    quaternion = tf.transformations.quaternion_from_euler(deg2rad(-yaw), deg2rad(-pitch), deg2rad(roll), 'rzyx')
+    quaternion = quaternion_from_euler(deg2rad(-yaw), deg2rad(-pitch), deg2rad(roll), axes='rzyx')
     
     return (x, -y, z), quaternion
