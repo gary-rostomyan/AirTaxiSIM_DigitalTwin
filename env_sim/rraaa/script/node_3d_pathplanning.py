@@ -27,7 +27,7 @@ class ROSNode(Node):
 
     def callback(self, msg):
         # This method is called when a new message is received on the subscribed topic
-        # rospy.loginfo("Received message: %s", data.data)
+        # self.get_logger().info("Received message: %s", msg.data)
         self.get_logger().info("Received")
 
         height = msg.layout.dim[0].size

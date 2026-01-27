@@ -30,7 +30,7 @@ except ImportError:
 from tools.environment import Environment
 
 from loguru import logger as log
-sys.path.append(os.path.abspath('/catkin_ws/src/env_sim/utils'))
+sys.path.append(os.path.abspath('/colcon_ws/src/utils'))
 from utils.config import load_yaml_file
 from utils import constants
 

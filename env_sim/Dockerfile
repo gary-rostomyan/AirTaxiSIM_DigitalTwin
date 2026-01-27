@@ -1,84 +1,77 @@
-FROM nvidia/cudagl:11.4.2-devel-ubuntu20.04
-
-ARG ROS_VERSION=noetic
-# ARG GID=1000
-# ARG UID=1000
-# ARG USER=sim
+FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
 
 ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
-ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
+ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics,compute,utility
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH="/usr/local/bin:${PATH}"
 
-# ENV USERNAME ${USER}
-# ENV HOME /home/$USERNAME
-# RUN groupadd -f -g ${GID} ${USERNAME} && \
-#     useradd -m $USERNAME -u ${UID} -g ${GID} && \
-#     echo "$USERNAME:$USERNAME" | chpasswd && \
-#     usermod --shell /bin/bash $USERNAME && \
-#     usermod -aG sudo $USERNAME && \
-#     mkdir -p /etc/sudoers.d && \
-#     echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USERNAME && \
-#     chmod 0440 /etc/sudoers.d/$USERNAME
+# Install basic dependencies and OpenGL libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    software-properties-common \
+    gnupg \
+    lsb-release \
+    wget \
+    libgl1-mesa-glx \
+    libgl1-mesa-dri \
+    libglx-mesa0 \
+    libglu1-mesa \
+    mesa-utils \
+    libxrender1 \
+    libxext6
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl software-properties-common
+# Add ROS2 Humble repository
+RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
-RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test &&\
-    apt install -y g++-11
+# Install ROS2 Humble and dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash-completion \
+    build-essential \
+    cmake \
+    command-not-found \
+    freeglut3-dev \
+    g++ \
+    git \
+    less \
+    libboost-all-dev \
+    libeigen3-dev \
+    libomp-dev \
+    libopencv-dev \
+    libqglviewer-dev-qt5 \
+    libtbb-dev \
+    make \
+    pcl-tools \
+    protobuf-compiler \
+    python3-tk \
+    qtbase5-dev \
+    ros-humble-desktop \
+    ros-humble-octomap \
+    ros-humble-octomap-msgs \
+    ros-humble-octomap-server \
+    ros-humble-cv-bridge \
+    ros-humble-tf-transformations \
+    ros-humble-sensor-msgs-py \
+    ros-humble-rosbag2 \
+    ros-humble-rosbag2-py \
+    ros-humble-gazebo-msgs \
+    python3-colcon-common-extensions \
+    sudo \
+    tar \
+    tmux \
+    vim \
+    wget \
+    xdg-user-dirs \
+    xsel
 
-RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' && \
-    apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 && \
-    apt-get update && apt-get install -y --no-install-recommends \
-        bash-completion \
-        build-essential \
-        cmake \
-        command-not-found \
-        freeglut3-dev \
-        g++ \
-        git \
-        less \
-        libboost-all-dev \
-        libeigen3-dev \
-        libomp-dev \
-        libopencv-dev \
-        libqglviewer-dev-qt5 \
-        qt5-default qt5-qmake qtbase5-dev \
-        qtbase5-dev-tools libqt5x11extras5-dev \
-        libtbb-dev \
-        lsb-release \
-        make \
-        pcl-tools \
-        protobuf-compiler \
-        python3-tk \
-        qtbase5-dev \
-        ros-${ROS_VERSION}-desktop \
-        ros-${ROS_VERSION}-octomap \
-        ros-${ROS_VERSION}-octomap-ros \
-        ros-${ROS_VERSION}-octomap-msgs \
-        ros-${ROS_VERSION}-octomap-server \
-        ros-${ROS_VERSION}-rviz \
-        ros-${ROS_VERSION}-vision-msgs \
-        sudo \
-        tar \
-        tmux \
-        vim \
-        wget \
-        xdg-user-dirs \
-        xsel
-
-# RUN echo "source /opt/ros/${ROS_VERSION}/setup.bash" >> $HOME/.bashrc && \
-    # echo "source $HOME/simulator/devel/setup.bash" >> $HOME/.bashrc
-
-RUN apt install -y python3-pip &&\
-    \
+# Install Python dependencies
+# IMPORTANT: Pin numpy<2.0 to avoid compatibility issues with cv_bridge and transforms3d
+RUN apt install -y python3-pip && \
     pip install \
         extensisq \
         opencv-python \
         pandas \
         pygame \
-        rosdep \
-        rosinstall \
-        rosinstall-generator \
         scikit-spatial \
         scipy \
         setuptools \
@@ -86,19 +79,24 @@ RUN apt install -y python3-pip &&\
         torch \
         torchaudio \
         torchvision \
-        wstool
+        transforms3d \
+        loguru \
+        ipdb && \
+    pip install "numpy<2.0" --force-reinstall
 
-COPY carla-0.9.15-cp38-cp38-linux_x86_64.whl /carla_python_api/carla-0.9.15-cp38-cp38-linux_x86_64.whl
-WORKDIR /carla_python_api
-RUN pip install carla-0.9.15-cp38-cp38-linux_x86_64.whl
-# RUN python3 -c 'import carla'
+# Install CARLA Python API from local wheel file
+# Note: This wheel only works on linux/amd64. On other platforms (e.g., ARM), skip this step.
+COPY carla-0.9.15-cp310-cp310-linux_x86_64.whl /tmp/
+RUN pip install /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl || \
+    echo "WARNING: CARLA wheel installation failed (likely due to platform mismatch). Skipping..." && \
+    rm -f /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl
 
-# COPY yolov5 /yolov5
-# WORKDIR /yolov5
-# RUN pip install -r requirements.txt
+# Create colcon workspace
+RUN mkdir -p /colcon_ws/src
+WORKDIR /colcon_ws
 
-RUN mkdir -p /catkin_ws/src
-
-RUN pip install loguru ipdb
-
+# Install X11 and display dependencies
 RUN apt-get update && apt-get install -y xvfb python3-pygame x11-xserver-utils
+
+# Source ROS2 setup
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
