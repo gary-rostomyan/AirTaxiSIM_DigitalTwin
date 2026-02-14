@@ -68,7 +68,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # IMPORTANT: Pin numpy<2.0 to avoid compatibility issues with cv_bridge and transforms3d
 RUN apt install -y python3-pip && \
     pip install \
+        catkin_pkg \
+        empy \
+        lark \
         extensisq \
+        matplotlib \
         opencv-python \
         pandas \
         pygame \
