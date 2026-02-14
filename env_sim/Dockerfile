@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
+FROM nvidia/cuda:11.8.0-devel-ubuntu20.04
 
 ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
 ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics,compute,utility
@@ -14,22 +14,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     libgl1-mesa-glx \
     libgl1-mesa-dri \
-    libglx-mesa0 \
     libglu1-mesa \
     mesa-utils \
     libxrender1 \
     libxext6
 
-# Add ROS2 Humble repository
+# Add ROS2 Foxy repository (Ubuntu 20.04)
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
-# Install ROS2 Humble and dependencies
+# Install ROS2 Foxy and dependencies
+# Note: ros-foxy-tf-transformations and ros-foxy-sensor-msgs-py may not exist in ROS 2 Foxy; transforms3d is installed via pip below, and sensor_msgs_py is installed via pip if needed.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash-completion \
     build-essential \
     cmake \
-    command-not-found \
     freeglut3-dev \
     g++ \
     git \
@@ -45,16 +44,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     protobuf-compiler \
     python3-tk \
     qtbase5-dev \
-    ros-humble-desktop \
-    ros-humble-octomap \
-    ros-humble-octomap-msgs \
-    ros-humble-octomap-server \
-    ros-humble-cv-bridge \
-    ros-humble-tf-transformations \
-    ros-humble-sensor-msgs-py \
-    ros-humble-rosbag2 \
-    ros-humble-rosbag2-py \
-    ros-humble-gazebo-msgs \
+    ros-foxy-desktop \
+    ros-foxy-octomap \
+    ros-foxy-octomap-msgs \
+    ros-foxy-cv-bridge \
+    ros-foxy-rosbag2 \
+    ros-foxy-gazebo-msgs \
     python3-colcon-common-extensions \
     sudo \
     tar \
@@ -64,36 +59,45 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xdg-user-dirs \
     xsel
 
+# Install Foxy packages that may need special handling
+# octomap-server and rosbag2-py: try to install, skip if unavailable
+RUN apt-get install -y ros-foxy-octomap-server || \
+    echo "WARNING: ros-foxy-octomap-server not available, may need to build from source"
+RUN apt-get install -y ros-foxy-rosbag2-py || \
+    echo "WARNING: ros-foxy-rosbag2-py not available"
+
 # Install Python dependencies
+# Pin versions for Python 3.8 compatibility
 # IMPORTANT: Pin numpy<2.0 to avoid compatibility issues with cv_bridge and transforms3d
 RUN apt install -y python3-pip && \
-    pip install \
+    pip3 install \
         catkin_pkg \
         empy \
         lark \
         extensisq \
-        matplotlib \
-        opencv-python \
-        pandas \
+        "matplotlib<=3.7.5" \
+        "opencv-python<=4.9.0.80" \
+        "pandas<=2.0.3" \
         pygame \
         scikit-spatial \
-        scipy \
+        "scipy<=1.10.1" \
         setuptools \
         typing_extensions \
-        torch \
-        torchaudio \
-        torchvision \
+        "torch<=2.0.1" \
+        "torchaudio<=2.0.2" \
+        "torchvision<=0.15.2" \
         transforms3d \
+        sensor-msgs-py \
         loguru \
         ipdb && \
-    pip install "numpy<2.0" --force-reinstall
+    pip3 install "numpy<2.0" --force-reinstall
 
-# Install CARLA Python API from local wheel file
+# Install CARLA Python API from local wheel file (cp38 version matching server 0.9.15-273-gc7339367b)
 # Note: This wheel only works on linux/amd64. On other platforms (e.g., ARM), skip this step.
-COPY carla-0.9.15-cp310-cp310-linux_x86_64.whl /tmp/
-RUN pip install /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl || \
+COPY carla-0.9.15-cp38-cp38-linux_x86_64.whl /tmp/
+RUN pip3 install /tmp/carla-0.9.15-cp38-cp38-linux_x86_64.whl || \
     echo "WARNING: CARLA wheel installation failed (likely due to platform mismatch). Skipping..." && \
-    rm -f /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl
+    rm -f /tmp/carla-0.9.15-cp38-cp38-linux_x86_64.whl
 
 # Create colcon workspace
 RUN mkdir -p /colcon_ws/src
@@ -102,5 +106,5 @@ WORKDIR /colcon_ws
 # Install X11 and display dependencies
 RUN apt-get update && apt-get install -y xvfb python3-pygame x11-xserver-utils
 
-# Source ROS2 setup
-RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+# Source ROS2 Foxy setup
+RUN echo "source /opt/ros/foxy/setup.bash" >> ~/.bashrc
