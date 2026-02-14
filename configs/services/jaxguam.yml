@@ -2,7 +2,7 @@ start_delay: 1
 ros:
   workspace: /colcon_ws
   ros_package: jaxguam
-  ros2_run_nodes:
+  rosrun_files:
     - node_vehicle
     # - node_static_landing_planner
     - landing_controller

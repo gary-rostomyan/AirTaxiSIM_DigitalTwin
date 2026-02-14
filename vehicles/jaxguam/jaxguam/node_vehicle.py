@@ -23,7 +23,7 @@ from jax_guam.guam_types import RefInputs
 from jax_guam.utils.jax_utils import jax2np, jax_use_cpu, jax_use_double
 from jax_guam.utils.logging import set_logger_format
 
-from guam_plot_batch_with_ref import plot_batch_with_ref
+from jaxguam.guam_plot_batch_with_ref import plot_batch_with_ref
 
 from utils.vehicle import Vehicle_Node
 from utils.config import load_yaml_file
@@ -149,25 +149,25 @@ class GUAM_Node(Vehicle_Node):
                 # [ vel_bEb, Omega_BIb, pos_bii, Q_i2b ]
                 # Convert from feet to meter
                 # North East Down in Guam ==> North East Up
-                self.vehicle_pose_msg.pose.position.x = b_state.aircraft[0][6] / 3.28084            # North
-                self.vehicle_pose_msg.pose.position.y = b_state.aircraft[0][7] / 3.28084
-                self.vehicle_pose_msg.pose.position.z = b_state.aircraft[0][8] / 3.28084 * -1
+                self.vehicle_pose_msg.pose.position.x = float(b_state.aircraft[0][6] / 3.28084)            # North
+                self.vehicle_pose_msg.pose.position.y = float(b_state.aircraft[0][7] / 3.28084)
+                self.vehicle_pose_msg.pose.position.z = float(b_state.aircraft[0][8] / 3.28084 * -1)
                 
                 # The lines below account for the frame of reference differences
                 # The second chunk of lines below applies a necessary rotation to print coordinates in CARLA's global frame of reference
-                q_x = b_state.aircraft[0][9]
-                q_y = b_state.aircraft[0][10]
-                q_z = b_state.aircraft[0][11]
-                q_w = b_state.aircraft[0][12]
+                q_x = float(b_state.aircraft[0][9])
+                q_y = float(b_state.aircraft[0][10])
+                q_z = float(b_state.aircraft[0][11])
+                q_w = float(b_state.aircraft[0][12])
                 self.vehicle_pose_msg.pose.orientation.x = -q_w
                 self.vehicle_pose_msg.pose.orientation.y = -q_z
                 self.vehicle_pose_msg.pose.orientation.z = q_y
                 self.vehicle_pose_msg.pose.orientation.w = q_x
                 self.vehicle_pose_pub.publish(self.vehicle_pose_msg)
 
-                self.vehicle_vel_msg.linear.x = b_state.aircraft[0][0] / 3.28084            # North
-                self.vehicle_vel_msg.linear.y = b_state.aircraft[0][1] / 3.28084
-                self.vehicle_vel_msg.linear.z = b_state.aircraft[0][2] / 3.28084 * -1
+                self.vehicle_vel_msg.linear.x = float(b_state.aircraft[0][0] / 3.28084)            # North
+                self.vehicle_vel_msg.linear.y = float(b_state.aircraft[0][1] / 3.28084)
+                self.vehicle_vel_msg.linear.z = float(b_state.aircraft[0][2] / 3.28084 * -1)
                 self.vehicle_vel_pub.publish(self.vehicle_vel_msg)
 
                 if self.skip_sleep == False:
