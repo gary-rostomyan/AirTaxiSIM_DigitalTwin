@@ -24,7 +24,6 @@ RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o 
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
 # Install ROS2 Foxy and dependencies
-# Note: ros-foxy-tf-transformations and ros-foxy-sensor-msgs-py may not exist in ROS 2 Foxy; transforms3d is installed via pip below, and sensor_msgs_py is installed via pip if needed.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash-completion \
     build-essential \
@@ -50,6 +49,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-foxy-cv-bridge \
     ros-foxy-rosbag2 \
     ros-foxy-gazebo-msgs \
+    ros-foxy-sensor-msgs-py \
     python3-colcon-common-extensions \
     sudo \
     tar \
@@ -67,9 +67,7 @@ RUN apt-get install -y ros-foxy-rosbag2-py || \
     echo "WARNING: ros-foxy-rosbag2-py not available"
 
 # Install Python dependencies
-# Pin versions for Python 3.8 compatibility
-# IMPORTANT: Pin numpy<2.0 to avoid compatibility issues with cv_bridge and transforms3d
-RUN apt install -y python3-pip && \
+RUN apt-get install -y python3-pip && \
     pip3 install \
         catkin_pkg \
         empy \
@@ -87,7 +85,6 @@ RUN apt install -y python3-pip && \
         "torchaudio<=2.0.2" \
         "torchvision<=0.15.2" \
         transforms3d \
-        sensor-msgs-py \
         loguru \
         ipdb && \
     pip3 install "numpy<2.0" --force-reinstall
@@ -96,8 +93,8 @@ RUN apt install -y python3-pip && \
 # Note: This wheel only works on linux/amd64. On other platforms (e.g., ARM), skip this step.
 COPY carla-0.9.15-cp38-cp38-linux_x86_64.whl /tmp/
 RUN pip3 install /tmp/carla-0.9.15-cp38-cp38-linux_x86_64.whl || \
-    echo "WARNING: CARLA wheel installation failed (likely due to platform mismatch). Skipping..." && \
-    rm -f /tmp/carla-0.9.15-cp38-cp38-linux_x86_64.whl
+    (echo "WARNING: CARLA wheel installation failed (likely due to platform mismatch or missing file). Skipping..." && \
+    rm -f /tmp/carla-0.9.15-cp38-cp38-linux_x86_64.whl)
 
 # Create colcon workspace
 RUN mkdir -p /colcon_ws/src
