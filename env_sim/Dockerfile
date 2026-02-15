@@ -72,7 +72,7 @@ RUN apt-get install -y python3-pip && \
         catkin_pkg \
         empy \
         lark \
-        extensisq \
+        "extensisq<=0.4.0" \
         "matplotlib<=3.7.5" \
         "opencv-python<=4.9.0.80" \
         "pandas<=2.0.3" \
@@ -87,7 +87,7 @@ RUN apt-get install -y python3-pip && \
         transforms3d \
         loguru \
         ipdb && \
-    pip3 install "numpy<2.0" --force-reinstall
+    pip3 install "numpy<2.0" --force-reinstall \
 
 # Install CARLA Python API from local wheel file (cp38 version matching server 0.9.15-273-gc7339367b)
 # Note: This wheel only works on linux/amd64. On other platforms (e.g., ARM), skip this step.
