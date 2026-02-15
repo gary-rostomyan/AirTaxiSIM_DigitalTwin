@@ -87,14 +87,12 @@ RUN apt-get install -y python3-pip && \
         transforms3d \
         loguru \
         ipdb && \
-    pip3 install "numpy<2.0" --force-reinstall \
+    pip3 install "numpy<2.0" --force-reinstall
 
 # Install CARLA Python API from local wheel file (cp38 version matching server 0.9.15-273-gc7339367b)
 # Note: This wheel only works on linux/amd64. On other platforms (e.g., ARM), skip this step.
 COPY carla-0.9.15-cp38-cp38-linux_x86_64.whl /tmp/
-RUN pip3 install /tmp/carla-0.9.15-cp38-cp38-linux_x86_64.whl || \
-    (echo "WARNING: CARLA wheel installation failed (likely due to platform mismatch or missing file). Skipping..." && \
-    rm -f /tmp/carla-0.9.15-cp38-cp38-linux_x86_64.whl)
+RUN pip3 install /tmp/carla-0.9.15-cp38-cp38-linux_x86_64.whl
 
 # Create colcon workspace
 RUN mkdir -p /colcon_ws/src
