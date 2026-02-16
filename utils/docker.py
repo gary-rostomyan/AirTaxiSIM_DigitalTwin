@@ -86,6 +86,7 @@ class ROSContainer(DockerContainer):
         super().__init__(service_name, compose_file, service_config)
         self.workspace_path = service_config['ros']['workspace']
         self.ros_package = service_config['ros']['ros_package']
+        self.ros_distro = service_config['ros'].get('ros_distro', 'humble')
 
         try:
             self.launch_file = service_config['ros']['launch_file']
@@ -98,7 +99,7 @@ class ROSContainer(DockerContainer):
             self.rosrun_files = None
 
     def build_workspace(self):
-        ros_command = f"cd {self.workspace_path} && source /opt/ros/humble/setup.bash && colcon build --symlink-install"
+        ros_command = f"cd {self.workspace_path} && source /opt/ros/{self.ros_distro}/setup.bash && colcon build --symlink-install"
         log.info(f"Building {self.ros_package} (ROS 2) in service {self.service_name}")
         self.run_command_in_service(ros_command)
 

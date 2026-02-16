@@ -3,6 +3,7 @@ ros:
   workspace: /colcon_ws
   ros_package: rraaa
   ros_version: 2
+  ros_distro: foxy
   launch_file: rraaa.launch.py
 weather:
       weather_flag: default       # Options: 'default' or 'custom'
