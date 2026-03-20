@@ -65,7 +65,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xsel
 
 # Install Python dependencies
-# IMPORTANT: Pin numpy<2.0 to avoid compatibility issues with cv_bridge and transforms3d
+# IMPORTANT: Pin numpy<1.24 because transforms3d uses deprecated np.float
 RUN apt install -y python3-pip && \
     pip install \
         catkin_pkg \
@@ -86,7 +86,7 @@ RUN apt install -y python3-pip && \
         transforms3d \
         loguru \
         ipdb && \
-    pip install "numpy<2.0" --force-reinstall
+    pip install "numpy<1.24" --force-reinstall
 
 # Install CARLA Python API from local wheel file
 # Note: This wheel only works on linux/amd64. On other platforms (e.g., ARM), skip this step.
