@@ -1,6 +1,6 @@
 services:
   carla:
-        image: stargaze0909/carla_uli_ubuntu20:latest
+        image: puffinlynx/carla-server:0.9.15
         logging:
           options:
             max-size: "10m"
