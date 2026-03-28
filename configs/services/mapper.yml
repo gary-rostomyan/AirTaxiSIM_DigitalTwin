@@ -1,5 +1,6 @@
 start_delay: 1
 ros:
-  workspace: /catkin_ws
+  workspace: /colcon_ws
   ros_package: mapper
-  launch_file: mapper.launch
+  ros_version: 2
+  launch_file: mapper.launch.py

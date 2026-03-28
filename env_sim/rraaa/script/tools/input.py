@@ -41,13 +41,14 @@ try:
 except ImportError:
     raise RuntimeError('cannot import pygame, make sure pygame package is installed')
 
-import rospy
+import rclpy
+from rclpy.parameter import Parameter
 
 
 def exit_game():
     """Shuts down program and PyGame"""
     pygame.quit()
-    rospy.signal_shutdown('Closed by the user!')
+    if rclpy.ok(): rclpy.shutdown()
     sys.exit()
 
 
@@ -75,7 +76,10 @@ class InputControl(object):
         self.mouse_pos = (0, 0)
         self.mouse_pos_click = (0,0)
         
-        rospy.set_param('reset_ack', False)
+        if not rclpy.ok(): rclpy.init()
+        self.node = rclpy.create_node('input_control')
+        self.node.declare_parameter('reset_ack', False)
+        self.node.declare_parameter('reset_called', False)
     
     def tick(self, clock):
         """Executed each frame. Calls method for parsing input."""
@@ -91,12 +95,12 @@ class InputControl(object):
                 if self._is_quit_shortcut(event.key):
                     exit_game()
 
-        self._reset_acknowleged = rospy.get_param('reset_ack')
+        self._reset_acknowleged = self.node.get_parameter('reset_ack').value
         if self._reset_acknowleged:
             self._reset_being_asked = False
-            rospy.set_param('reset_called', False)
+            self.node.set_parameters([Parameter('reset_called', Parameter.Type.BOOL, False)])
         else:
-            rospy.set_param('reset_called', self._reset_being_asked)
+            self.node.set_parameters([Parameter('reset_called', Parameter.Type.BOOL, self._reset_being_asked)])
     
 
 

@@ -1,6 +1,6 @@
 #! /usr/bin/python3
 
-import rospy
+import rclpy
 import argparse
 import atexit
 import signal
@@ -28,14 +28,19 @@ def send_minihawk_back(config):
     z = config['ego_vehicle']['location']['z']
 
     # Publishing topic
-    rospy.init_node("temp")
-    target_pub = rospy.Publisher('/minihawk_SIM/mavros/setpoint_position/local', PoseStamped, queue_size=1)
-    rospy.sleep(1) # let the publishes establish the connection
-    target = PoseStamped()
-    target.pose.position.x = x
-    target.pose.position.y = -y
-    target.pose.position.z = z
-    target_pub.publish(target)
+    rclpy.init()
+    try:
+        node = rclpy.create_node("temp")
+        target_pub = node.create_publisher(PoseStamped, '/minihawk_SIM/mavros/setpoint_position/local', 1)
+        time.sleep(1) # let the publishes establish the connection
+        target = PoseStamped()
+        target.pose.position.x = x
+        target.pose.position.y = -y
+        target.pose.position.z = z
+        target_pub.publish(target)
+        node.destroy_node()
+    finally:
+        rclpy.shutdown()
 
 class Test:
 

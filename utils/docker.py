@@ -98,26 +98,26 @@ class ROSContainer(DockerContainer):
             self.rosrun_files = None
 
     def build_workspace(self):
-        ros_command = f"cd {self.workspace_path} && source /opt/ros/noetic/setup.bash && catkin_make"
-        log.info(f"Buildin {self.ros_package} in service {self.service_name}")
+        ros_command = f"cd {self.workspace_path} && source /opt/ros/humble/setup.bash && colcon build --symlink-install"
+        log.info(f"Building {self.ros_package} (ROS 2) in service {self.service_name}")
         self.run_command_in_service(ros_command)
 
     def run_ros_command(self, command, background = False):
-        ros_command = f"cd {self.workspace_path} && source devel/setup.bash && {command}"
-        log.info(f"Running ROS command in service {self.service_name}: {ros_command}")
+        ros_command = f"cd {self.workspace_path} && source install/setup.bash && {command}"
+        log.info(f"Running ROS 2 command in service {self.service_name}: {ros_command}")
         return self.run_command_in_service(ros_command, background)
 
     def roslaunch(self, target):
-        self.processes.append(self.run_ros_command(f"roslaunch {self.ros_package} {target}", background=True))
+        self.processes.append(self.run_ros_command(f"ros2 launch {self.ros_package} {target}", background=True))
 
     def rosrun(self, target):
-        self.processes.append(self.run_ros_command(f"rosrun {self.ros_package} {target}", background=True))
+        self.processes.append(self.run_ros_command(f"ros2 run {self.ros_package} {target}", background=True))
 
     def run_all(self):
         if self.launch_file:
             self.roslaunch(self.launch_file)
 
-            # If there are multiple ROS launch files, sleeping after each one helps to avoid ROS Master conflicts.
+            # Delay aids DDS discovery.
             time.sleep(1)
         elif self.rosrun_files:
             for script in self.rosrun_files:
@@ -144,7 +144,6 @@ class ContainerManager:
                     self.run_command_on_host(command.split(' '))
             except KeyError:
                 pass
-        self.roscore = DockerContainer(service_name='roscore', compose_file=compose_file, service_config=None)
 
     def _load_containers(self):
         for service_name, service_config in self.config.items():
@@ -173,7 +172,6 @@ class ContainerManager:
             container.stop_service()
 
         # After the elegant stop above, bture force stop all running services,
-        # even those started implicitly, e.g. roscore
         stop_command = ['docker', 'compose', '-f', self.compose_file, 'stop']
         subprocess.run(stop_command, check=True, text=True)
 

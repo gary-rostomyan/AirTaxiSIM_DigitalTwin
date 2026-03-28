@@ -1,16 +1,17 @@
-FROM ros:noetic
+FROM ros:humble
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl software-properties-common
+ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt install -y python3-pip
+RUN apt-get update --fix-missing
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-pip \
+    python3-colcon-common-extensions \
+    ros-humble-std-msgs
 
-# Install loguru
+RUN pip install -U pip
 RUN pip install loguru ipdb tqdm matplotlib
 
-# Set up ROS environment
-ENV ROS_DISTRO=noetic
-ENV ROS_ROOT=/opt/ros/noetic
-ENV ROS_PACKAGE_PATH=$ROS_ROOT/share
-ENV PATH=$ROS_ROOT/bin:$PATH
-ENV PYTHONPATH=$ROS_ROOT/lib/python3/dist-packages:$PYTHONPATH
-ENV LD_LIBRARY_PATH=$ROS_ROOT/lib:$LD_LIBRARY_PATH
+RUN mkdir -p /colcon_ws/src
+WORKDIR /colcon_ws
+
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc

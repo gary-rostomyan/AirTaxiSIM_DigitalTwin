@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
-import rospy
+import rclpy
+from rclpy.node import Node
 import argparse
 import numpy as np
-import tf
 import cv2
 from nav_msgs.msg import OccupancyGrid
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
-from tf.transformations import euler_from_quaternion, quaternion_from_euler
+from tf2_ros import Buffer, TransformListener, LookupException, ConnectivityException, ExtrapolationException
+from tf_transformations import euler_from_quaternion, quaternion_from_euler
 import torch
 from cv_bridge import CvBridge
 from tools.a_star import AStarPlanner
@@ -78,16 +79,17 @@ def xy2xy_indice(x, y, origin_x, origin_y, resolution):
 
 
 
-class PathPlanner:
+class PathPlanner(Node):
 
     def __init__(self):
+        super().__init__('path_planner')
 
         self.occupancy_grid = None
-        self.sub = rospy.Subscriber('/projected_map', OccupancyGrid, self.callback_occupancy_grid)
-        self.sub1 = rospy.Subscriber('/display_node/target_pos', Twist, self.callback_target_msg)
+        self.sub = self.create_subscription(OccupancyGrid, '/projected_map', self.callback_occupancy_grid, 1)
+        self.sub1 = self.create_subscription(Twist, '/display_node/target_pos', self.callback_target_msg, 1)
         self.triangle_marker = Triangle()
 
-        self.pub_map_image = rospy.Publisher('/path_planner/map_image', Image, queue_size=1)
+        self.pub_map_image = self.create_publisher(Image, '/path_planner/map_image', 1)
 
          # a bridge from cv2 image to ROS image
         self.mybridge = CvBridge()
@@ -95,6 +97,10 @@ class PathPlanner:
         self.target_xy = None
 
         self.astar_planner = AStarPlanner(rs=2)
+
+        # TF Buffer for ROS2
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
     def callback_target_msg(self, msg):
 
@@ -250,24 +256,27 @@ class PathPlanner:
 def run_pathplanner(args):
 
     # rosnode node initialization
-    rospy.init_node('pathplanner_node')
-
-    # Running rate
-    rate=rospy.Rate(FREQ)
-
-    # subscriber init.
-    tf_listener = tf.TransformListener()
+    rclpy.init(args=None)
 
     planner = PathPlanner()
+
+    rate = planner.create_rate(FREQ)
 
 
     i = 0
 
 
-    while not rospy.is_shutdown():
+    while rclpy.ok():
+
+        rclpy.spin_once(planner, timeout_sec=0)
 
         try:
-            tf_vehicle = tf_listener.lookupTransform('map', 'vehicle', rospy.Time(0))
+            t = planner.tf_buffer.lookup_transform('map', 'vehicle', rclpy.time.Time())
+
+            trans = [t.transform.translation.x, t.transform.translation.y, t.transform.translation.z]
+            rot = [t.transform.rotation.x, t.transform.rotation.y, t.transform.rotation.z, t.transform.rotation.w]
+
+            tf_vehicle = (trans, rot)
 
             planner.step(tf_vehicle)
 
@@ -278,7 +287,8 @@ def run_pathplanner(args):
 
 
 
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+
+        except (LookupException, ConnectivityException, ExtrapolationException):
             continue
 
         # break
@@ -297,6 +307,9 @@ def run_pathplanner(args):
 
         # if i > 5:
         #     break
+
+    planner.destroy_node()
+    rclpy.shutdown()
 
 
 def main():
@@ -319,8 +332,4 @@ def main():
 
 
 if __name__ == '__main__':
-
-    try:
-        main()
-    except rospy.ROSInterruptException:
-        pass
+    main()

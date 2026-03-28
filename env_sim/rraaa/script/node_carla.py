@@ -6,7 +6,8 @@ import carla
 import glob
 import numpy as np
 import os
-import rospy
+import rclpy
+from rclpy.parameter import Parameter
 import signal
 import sys
 import time
@@ -29,7 +30,7 @@ except ImportError:
 from tools.environment import Environment
 
 from loguru import logger as log
-sys.path.append(os.path.abspath('/catkin_ws/src/env_sim/utils'))
+sys.path.append(os.path.abspath('/colcon_ws/src/utils'))
 from utils.config import load_yaml_file
 from utils import constants
 
@@ -56,27 +57,34 @@ def run_carla_node(args, client):
     config = load_yaml_file(constants.merged_config_path, __file__)
 
     # rosnode node initialization
-    rospy.init_node('carla_node')
-    rospy.set_param('tracking_control', False)
+    rclpy.init(args=None)
+    node = rclpy.create_node('carla_node')
 
-    environment = Environment(args, client, config)
+    node.declare_parameter('tracking_control', False)
+    node.declare_parameter('reset_called', False)
+    node.declare_parameter('episode_done', False)
+    node.declare_parameter('done_ack', False)
+    node.declare_parameter('reset_ack', False)
+
+    environment = Environment(args, client, config, node)
     _ = GracefulShutdown(environment)
 
-
-    rospy.set_param('reset_called', False)
-    rospy.set_param('episode_done', False)
-    rospy.set_param('done_ack', False)
+    node.set_parameters([Parameter('reset_called', Parameter.Type.BOOL, False)])
+    node.set_parameters([Parameter('episode_done', Parameter.Type.BOOL, False)])
+    node.set_parameters([Parameter('done_ack', Parameter.Type.BOOL, False)])
 
     try:
 
         # Running rate
-        rate=rospy.Rate(FREQ_LOW_LEVEL)
+        rate = node.create_rate(FREQ_LOW_LEVEL)
 
 
         #Simulation loop
         call_exit = False
 
-        while not rospy.is_shutdown():
+        while rclpy.ok():
+
+            rclpy.spin_once(node, timeout_sec=0)
 
             environment.client_clock.tick_busy_loop(FREQ_LOW_LEVEL)
 
@@ -89,24 +97,30 @@ def run_carla_node(args, client):
             ##########################
 
             # Reset Call from High-Level Decision Maker that determine both termination and rewards
-            if not(rospy.get_param('done_ack')) and rospy.get_param('episode_done'):
+            done_ack = node.get_parameter('done_ack').value
+            episode_done = node.get_parameter('episode_done').value
+
+            if not (done_ack) and episode_done:
                 environment.reset()
-                rospy.set_param('done_ack', True)
-            elif rospy.get_param('done_ack') and not(rospy.get_param('episode_done')):
-                rospy.set_param('done_ack', False)
+                node.set_parameters([Parameter('done_ack', Parameter.Type.BOOL, True)])
+            elif done_ack and not (episode_done):
+                node.set_parameters([Parameter('done_ack', Parameter.Type.BOOL, False)])
 
             # Reset Call from Input Display.
-            #reset_called = rospy.get_param('reset_called')
-            if rospy.get_param('reset_called'):
+            reset_called = node.get_parameter('reset_called').value
+            if reset_called:
                 print('HERE????')
                 environment.reset()
                 reset_called = False
-                rospy.set_param('reset_ack', True)
+                node.set_parameters([Parameter('reset_ack', Parameter.Type.BOOL, True)])
             else:
-                rospy.set_param('reset_ack', False)
+                node.set_parameters([Parameter('reset_ack', Parameter.Type.BOOL, False)])
 
     finally:
         environment.destroy()
+        node.destroy_node()
+        rclpy.shutdown()
+
 
 def main():
     argparser = argparse.ArgumentParser(
@@ -229,5 +243,5 @@ if __name__ == '__main__':
 
     try:
         main()
-    except rospy.ROSInterruptException:
-        pass
+    except Exception as e:
+        print(e)
