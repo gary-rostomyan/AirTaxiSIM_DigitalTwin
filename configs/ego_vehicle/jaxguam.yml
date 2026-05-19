@@ -1,6 +1,6 @@
 type: jaxguam
 # model: vehicle.lincoln.mkz_2020
-model: uli_cora
+model: vehicle.uli.uli_cora
 debug: false
 plot: false
 save_video: false

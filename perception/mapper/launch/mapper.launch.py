@@ -17,12 +17,12 @@ def generate_launch_description():
                 'sensor_model.max_range': 50.0,
                 'occupancy_min_z': 3.0,
                 'occupancy_max_z': 99.9,
+                'use_sim_time': True,
             }],
             remappings=[
                 ('cloud_in', '/carla_node/lidar_point_cloud'),
             ],
         ),
-
         # Carla Multi-LiDAR Merger Node
         Node(
             package='mapper',
