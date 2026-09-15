@@ -42,8 +42,15 @@ RUN groupadd -g ${HOST_GID} ${CARLA_USER} || true \
 RUN mkdir -p /carla_runtime /usr/local/bin \
  && chown -R ${HOST_UID}:${HOST_GID} /carla_runtime /home/${CARLA_USER}
 
+COPY --chown=${HOST_UID}:${HOST_GID} CARLA_Shipping_0.9.15-330-gdc9e2976d-dirty /carla_runtime/
 COPY entrypoint-carla-runtime.sh /usr/local/bin/entrypoint-carla-runtime.sh
 RUN chmod +x /usr/local/bin/entrypoint-carla-runtime.sh
+
+COPY --chown=${HOST_UID}:${HOST_GID} DowntownOrlandoMap \
+     /carla_runtime/LinuxNoEditor/CarlaUE4/Content/DowntownOrlandoMap
+COPY --chown=${HOST_UID}:${HOST_GID} DowntownOrlando.xodr \
+     /carla_runtime/LinuxNoEditor/CarlaUE4/Content/DowntownOrlandoMap/Maps/DowntownOrlando/OpenDrive/DowntownOrlando.xodr
+
 
 USER ${CARLA_USER}
 ENV HOME=/home/${CARLA_USER}

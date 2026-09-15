@@ -22,7 +22,11 @@ from .mln_safety_verifier import (
     EnvironmentalPredicate,
     Rule
 )
-from rraaa_sim.msg import WindStatus, ObstacleArray
+# from rraaa_sim.msg import WindStatus, ObstacleArray
+try:
+    from rraaa_sim.msg import WindStatus, ObstacleArray
+except ImportError:
+    WindStatus = ObstacleArray = None
 
 
 class BasePathPlanner:
@@ -519,6 +523,11 @@ class PathPlanner(BasePathPlanner, Node):
                 plot_path_pv(waypoints, obstacles)
 
             velocities = compute_velocities([np.array(x) for x in waypoints], velocity_magnitude=0.5)
+
+        elif self.config['ego_vehicle']['planner']['type'] == 'static':
+            wps = self.config['ego_vehicle']['planner']['waypoints']
+            waypoints = [np.array([float(w['x']), float(w['y']), float(w['z'])]) for w in wps]
+            velocities = compute_velocities(waypoints, velocity_magnitude=0.5)
         else:
             raise ValueError(f"Unknown planner {self.config['ego_vehicle']['planner']['type']}")
 

@@ -1,0 +1,27 @@
+<?xml version="1.0" standalone="yes"?>
+<OpenDRIVE>
+    <header revMajor="1" revMinor="4" name="DowntownOrlando" version="1"
+            date="" north="0" south="0" east="0" west="0" vendor="AirTaxiSIM">
+        <geoReference><![CDATA[+proj=tmerc +lat_0=28.544 +lon_0=-81.37845 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs]]></geoReference>
+    </header>
+    <road name="dummy" length="1.0" id="0" junction="-1">
+        <planView>
+            <geometry s="0" x="0" y="0" hdg="0" length="1.0"><line/></geometry>
+        </planView>
+        <lanes>
+            <laneSection s="0">
+                <center>
+                    <lane id="0" type="none" level="false">
+                        <roadMark sOffset="0" type="none"/>
+                    </lane>
+                </center>
+                <right>
+                    <lane id="-1" type="driving" level="false">
+                        <link/>
+                        <width sOffset="0" a="3.5" b="0" c="0" d="0"/>
+                    </lane>
+                </right>
+            </laneSection>
+        </lanes>
+    </road>
+</OpenDRIVE>

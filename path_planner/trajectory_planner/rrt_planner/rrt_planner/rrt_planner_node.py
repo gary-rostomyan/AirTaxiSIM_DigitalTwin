@@ -374,7 +374,13 @@ class RRTPlannerNode(ROSNode):
 
         # Initialize the planner instance
         log.info("Initializing the internal RRT planner...")
-        self.rrt_planner = RRTPlanner(self.start, self.goal, map_boundaries=(-100, 100, -100, 100, -5, 100), goal_thresh=30.0, step_size=10.0, max_iter=1000)
+        # self.rrt_planner = RRTPlanner(self.start, self.goal, map_boundaries=(-100, 100, -100, 100, -5, 100), goal_thresh=30.0, step_size=10.0, max_iter=1000)
+        lo = np.minimum(self.start, self.goal) - 80.0
+        hi = np.maximum(self.start, self.goal) + 80.0
+        log.info(f"RRT bounds: x[{lo[0]:.0f},{hi[0]:.0f}] y[{lo[1]:.0f},{hi[1]:.0f}] z[{lo[2]:.0f},{hi[2]:.0f}]")
+        self.rrt_planner = RRTPlanner(self.start, self.goal,
+            map_boundaries=(lo[0], hi[0], lo[1], hi[1], lo[2], hi[2]),
+            goal_thresh=30.0, step_size=40.0, max_iter=5000)
 
         # Generate the starting plan
         log.info("Planning the start path...")
