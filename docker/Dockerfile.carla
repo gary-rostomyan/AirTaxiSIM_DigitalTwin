@@ -1,0 +1,53 @@
+FROM ubuntu:22.04
+
+ARG HOST_UID=1000
+ARG HOST_GID=1000
+ARG CARLA_USER=carlauser
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CARLA_RUNTIME=/carla_runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    dos2unix \
+    gnupg \
+    libgl1 \
+    libglib2.0-0 \
+    libglu1-mesa \
+    libgtk-3-0 \
+    libsdl2-2.0-0 \
+    libvulkan1 \
+    libx11-6 \
+    libxcb1 \
+    libxcursor1 \
+    libxext6 \
+    libxinerama1 \
+    libxi6 \
+    libxrandr2 \
+    libxrender1 \
+    libxss1 \
+    libpulse0 \
+    mesa-utils \
+    procps \
+    pulseaudio \
+    sudo \
+    xdg-user-dirs \
+    xdg-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -g ${HOST_GID} ${CARLA_USER} || true \
+ && useradd -m -u ${HOST_UID} -g ${HOST_GID} -s /bin/bash ${CARLA_USER} || true
+
+RUN mkdir -p /carla_runtime /usr/local/bin \
+ && chown -R ${HOST_UID}:${HOST_GID} /carla_runtime /home/${CARLA_USER}
+
+COPY entrypoint-carla-runtime.sh /usr/local/bin/entrypoint-carla-runtime.sh
+RUN chmod +x /usr/local/bin/entrypoint-carla-runtime.sh
+
+USER ${CARLA_USER}
+ENV HOME=/home/${CARLA_USER}
+WORKDIR /carla_runtime
+
+ENTRYPOINT ["/usr/local/bin/entrypoint-carla-runtime.sh"]
+CMD ["-RenderOffScreen", "-world-port=2000"]

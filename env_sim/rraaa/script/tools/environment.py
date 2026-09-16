@@ -60,6 +60,8 @@ class ComplexObject():
     def spawn_object(self):
         # Retrieve the blueprint
         adv_obj = self.world.get_blueprint_library().filter("uli_cora")[0]
+        # adv_obj = self.world.get_blueprint_library().filter("vehicle.lincoln.mkz_2020")[0]
+        
 
         # Retrieve the starting pose
         start_pose = self.get_closest_record(self.recording_start_time)[1]
@@ -340,7 +342,15 @@ class Environment():
 
 
     def spawn_ego_vehicle(self):
-        ego_bp = self.world.get_blueprint_library().filter(self.config['ego_vehicle']['model'])[0]
+        # ego_bp = self.world.get_blueprint_library().filter(self.config['ego_vehicle']['model'])[0]
+        bps = self.world.get_blueprint_library().filter(self.config['ego_vehicle']['model'])
+
+        if len(bps) == 0:
+            raise RuntimeError(
+                f"Ego vehicle blueprint '{self.config['ego_vehicle']['model']}' not found"
+            )
+
+        ego_bp = bps[0]
         ego_bp.set_attribute('role_name','ego')
         spawn_point = random.choice(self.world.get_map().get_spawn_points())
 

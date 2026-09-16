@@ -1,47 +1,101 @@
 services:
+  # carla:
+  #       image: carla-ue4-jammy-dev
+  #       # image: puffinlynx/carla-server:latest
+  #       # image: stargaze0909/carla_uli_ubuntu20:latest
+  #       logging:
+  #         options:
+  #           max-size: "10m"
+  #           max-file: "3"
+  #       privileged: true
+  #       environment:
+  #           SDL_VIDEODRIVER: x11
+  #           DISPLAY: $DISPLAY
+  #       ports:
+  #           - "2000:2000"
+  #           - "2001:2001"
+  #           - "2002:2002"
+  #       command: ./CarlaUE4.sh #-quality-level=Low -carla-rpc-port=2000
+  #       volumes:
+  #           - /tmp/.X11-unix:/tmp/.X11-unix:rw
+  #           - /etc/localtime:/etc/localtime
+  #           - /etc/timezone:/etc/timezone
+  #           - /usr/share/vulkan/icd.d:/usr/share/vulkan/icd.d
+  #       deploy:
+  #         resources:
+  #           reservations:
+  #             devices:
+  #               - driver: nvidia
+  #                 count: "all"
+  #                 capabilities: [compute,utility,graphics,display]
   carla:
-        image: stargaze0909/carla_uli_ubuntu20:latest
-        logging:
-          options:
-            max-size: "10m"
-            max-file: "3"
-        privileged: true
-        environment:
-            SDL_VIDEODRIVER: x11
-            DISPLAY: $DISPLAY
-        ports:
-            - "2000:2000"
-            - "2001:2001"
-            - "2002:2002"
-        command: ./CarlaUE4.sh #-quality-level=Low -carla-rpc-port=2000
-        volumes:
-            - /tmp/.X11-unix:/tmp/.X11-unix:rw
-            - /etc/localtime:/etc/localtime
-            - /etc/timezone:/etc/timezone
-            - /usr/share/vulkan/icd.d:/usr/share/vulkan/icd.d
-        deploy:
-          resources:
-            reservations:
-              devices:
-                - driver: nvidia
-                  count: "all"
-                  capabilities: [compute,utility,graphics,display]
+    build:
+      context: /home/gary/AirTaxiSIM_DigitalTwin/docker
+      dockerfile: Dockerfile.carla
+      args:
+        HOST_UID: "1000"
+        HOST_GID: "1000"
+    image: airtaxi-carla-runtime:0.9.15
+    pull_policy: never
+    container_name: airtaxi-carla
+
+    command:
+      # - -RenderOffScreen
+      - -carla-rpc-port=2000
+
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+      XDG_RUNTIME_DIR: /tmp/xdg-runtime
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/nvidia_icd.json
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: graphics,display,utility,compute
+      SDL_AUDIODRIVER: dummy
+      SDL_VIDEODRIVER: x11
+
+    gpus: all
+    privileged: true
+    shm_size: "1g"
+    user: "1000:1000"
+
+    ports:
+      - "2000:2000"
+      - "2001:2001"
+      - "2002:2002"
+
+    volumes:
+      - /home/gary/carla_runtime_uli:/carla_runtime:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /usr/share/vulkan/icd.d/nvidia_icd.json:/usr/share/vulkan/icd.d/nvidia_icd.json:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
 
   env_sim:
+    ipc: host
     container_name: env_sim
     build:
       context: ../env_sim
       dockerfile: Dockerfile
+    # environment:
+    #   - DISPLAY=${DISPLAY}
+    #   - SERVICE_NAME=env_sim
+    #   - SDL_VIDEODRIVER=x11
+    #   - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
     environment:
-      - DISPLAY=${DISPLAY}
-      - SERVICE_NAME=env_sim
-      - SDL_VIDEODRIVER=x11
-      - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
+      SERVICE_NAME: env_sim
+      DISPLAY: ${DISPLAY:-:0}
+      PYTHONPATH: /colcon_ws/src:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages
+      SDL_VIDEODRIVER: x11
+      SDL_AUDIODRIVER: dummy
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+      QT_X11_NO_MITSHM: "1"
+      XDG_RUNTIME_DIR: /tmp/runtime-root
     volumes:
         - /tmp/.X11-unix:/tmp/.X11-unix:rw
         - ../env_sim:/colcon_ws/src/env_sim
         - ../utils:/colcon_ws/src/utils
         - ../records:/colcon_ws/src/env_sim/rraaa/script/records
+        - /dev/shm:/dev/shm
     privileged: true
     network_mode: host
     devices:
@@ -234,7 +288,16 @@ services:
     #   - roscore
     working_dir: /colcon_ws
     environment:
-      - SERVICE_NAME=mapper
-      - SDL_VIDEODRIVER=x11
-      - DISPLAY=$DISPLAY
-      - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
+      # - SERVICE_NAME=mapper
+      # - SDL_VIDEODRIVER=x11
+      # - DISPLAY=$DISPLAY
+      # - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
+      SERVICE_NAME: mapper
+      DISPLAY: ${DISPLAY:-:0}
+      PYTHONPATH: /colcon_ws/src:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages
+      SDL_VIDEODRIVER: x11
+      SDL_AUDIODRIVER: dummy
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+      QT_X11_NO_MITSHM: "1"
+      XDG_RUNTIME_DIR: /tmp/runtime-root

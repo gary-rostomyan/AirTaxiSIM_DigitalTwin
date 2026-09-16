@@ -16,7 +16,7 @@ def generate_launch_description():
                 'base_frame_id': 'map',
                 'sensor_model.max_range': 50.0,
                 'occupancy_min_z': 3.0,
-                'occupancy_max_z': 200.0,
+                'occupancy_max_z': 99.9,
             }],
             remappings=[
                 ('cloud_in', '/carla_node/lidar_point_cloud'),

@@ -69,6 +69,11 @@ def run_carla_node(args, client):
     environment = Environment(args, client, config, node)
     _ = GracefulShutdown(environment)
 
+    # Wait until ego vehicle is ready
+    while not getattr(environment, "ego_vehicle", None):
+        print("Waiting for ego vehicle spawn...")
+        time.sleep(0.1)
+
     node.set_parameters([Parameter('reset_called', Parameter.Type.BOOL, False)])
     node.set_parameters([Parameter('episode_done', Parameter.Type.BOOL, False)])
     node.set_parameters([Parameter('done_ack', Parameter.Type.BOOL, False)])
@@ -89,7 +94,12 @@ def run_carla_node(args, client):
             environment.client_clock.tick_busy_loop(FREQ_LOW_LEVEL)
 
             # Carla Tick
-            environment.tick() # <---- It includes ROS massage subscription and publishing.
+            # environment.tick() # <---- It includes ROS massage subscription and publishing.
+            try:
+                environment.tick()
+            except IndexError as e:
+                print("Environment not ready yet:", e)
+                continue
             rate.sleep()
 
             ##########################
@@ -110,7 +120,11 @@ def run_carla_node(args, client):
             reset_called = node.get_parameter('reset_called').value
             if reset_called:
                 print('HERE????')
-                environment.reset()
+                # environment.reset()
+                try:
+                    environment.reset()
+                except IndexError as e:
+                    print("Reset skipped:", e)
                 reset_called = False
                 node.set_parameters([Parameter('reset_ack', Parameter.Type.BOOL, True)])
             else:

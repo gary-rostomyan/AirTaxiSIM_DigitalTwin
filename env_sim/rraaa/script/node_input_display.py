@@ -47,7 +47,7 @@ class InfoTextManager(object):
         self.node.create_subscription(Float32MultiArray, '/carla_node/world_state', self.callback_world_state, 10)
         self.df_world_state = None
         self.node.create_subscription(Float32MultiArray, '/carla_node/vehicles_state', self.callback_vehicle_state, 10)
-        self.df_world_state = None
+        self.df_vehicle_state = None
         self.node.create_subscription(PoseStamped, '/jaxguam/pose', self.callback_guam_pose, 10)
         self.pose_guam_xyz = None
         self.pose_guam_euler_ypr = None
@@ -214,13 +214,13 @@ def run_input_node(args):
         ###############
         twist_msg = Twist()
 
-        twist_msg.linear.x = input_control._longitudinal_move_cmd
-        twist_msg.linear.y = input_control._lateral_move_cmd
-        twist_msg.linear.z = input_control._vertical_move_cmd
+        twist_msg.linear.x = float(input_control._longitudinal_move_cmd)
+        twist_msg.linear.y = float(input_control._lateral_move_cmd)
+        twist_msg.linear.z = float(input_control._vertical_move_cmd)
 
-        twist_msg.angular.x = input_control._pitch_rate_cmd*.2
-        twist_msg.angular.y = input_control._roll_rate_cmd*0.2
-        twist_msg.angular.z = input_control._yaw_rate_cmd*0.2
+        twist_msg.angular.x = float(input_control._pitch_rate_cmd)*.2
+        twist_msg.angular.y = float(input_control._roll_rate_cmd)*0.2
+        twist_msg.angular.z = float(input_control._yaw_rate_cmd)*0.2
 
         pub_control_state.publish(twist_msg)
 
@@ -229,10 +229,10 @@ def run_input_node(args):
 
         twist_msg_tgt = Twist()
         width, height = map_listen_renderer.display_man.get_display_size()
-        twist_msg_tgt.linear.y = np.clip(input_control.mouse_pos[0] - map_listen_renderer.offset[0], 0, width)
-        twist_msg_tgt.linear.x = np.clip(input_control.mouse_pos[1] - map_listen_renderer.offset[1], 0, height)
-        twist_msg_tgt.angular.y = np.clip(input_control.mouse_pos_click[0] - map_listen_renderer.offset[0], 0, width)
-        twist_msg_tgt.angular.x = np.clip(input_control.mouse_pos_click[1] - map_listen_renderer.offset[1], 0, height)
+        twist_msg_tgt.linear.y = float(np.clip(input_control.mouse_pos[0] - map_listen_renderer.offset[0], 0, width))
+        twist_msg_tgt.linear.x = float(np.clip(input_control.mouse_pos[1] - map_listen_renderer.offset[1], 0, height))
+        twist_msg_tgt.angular.y = float(np.clip(input_control.mouse_pos_click[0] - map_listen_renderer.offset[0], 0, width))
+        twist_msg_tgt.angular.x = float(np.clip(input_control.mouse_pos_click[1] - map_listen_renderer.offset[1], 0, height))   
         pub_target_position.publish(twist_msg_tgt)
 
 

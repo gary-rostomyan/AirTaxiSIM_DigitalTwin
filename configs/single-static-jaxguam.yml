@@ -88,6 +88,7 @@ adv_objects:
         y: 0
         z: 0
       model: uli_cora
+      # model: vehicle.lincoln.mkz_2020
 
 # Target point
 target:
