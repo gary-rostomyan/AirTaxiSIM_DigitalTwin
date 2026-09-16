@@ -38,7 +38,7 @@ services:
 
 
 # Test
-map: Town02_Opt
+map: Town10HD_Opt
 spectator_follows_ego_vehicle: False
 
 # Vehicle
