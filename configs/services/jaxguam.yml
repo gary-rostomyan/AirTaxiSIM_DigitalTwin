@@ -1,8 +1,16 @@
+# start_delay: 1
+# start_commands: "while true; do ros2 run rrt_planner rrt_planner_node; sleep 1; done &"
+# ros:
+#   workspace: /colcon_ws
+#   ros_package: jaxguam
+#   rosrun_files:
+#     - node_vehicle
+#     # - node_static_landing_planner
+#     - landing_controller
 start_delay: 1
+start_commands: "while true; do ros2 run rrt_planner rrt_planner_node; sleep 1; done &"
 ros:
   workspace: /colcon_ws
   ros_package: jaxguam
   rosrun_files:
-    - node_vehicle
-    # - node_static_landing_planner
-    - landing_controller
+  - node_vehicle

@@ -68,10 +68,10 @@ ego_vehicle:
 adv_objects:
   enabled: True # One of ["True", "False"]
   complex_objects:
-    records_dir: /catkin_ws/src/env_sim/rraaa/script/records # Directory where the recordings are stored
-    object_names:
-      - AdvObject1
-      - AdvObject2
+    records_dir: /catkin_ws/rraaa/script/records # Directory where the recordings are stored
+    object_names: []
+      # - AdvObject1
+      # - AdvObject2
   objects:
     - pose:
         type: relative # One of ["absolute", "relative"]. If "relative", then relative to the starting pose of the ego vehicle.
@@ -87,7 +87,7 @@ adv_objects:
         x: 0
         y: 0
         z: 0
-      model: uli_cora
+      model: vehicle.uli.uli_cora
       # model: vehicle.lincoln.mkz_2020
 
 # Target point

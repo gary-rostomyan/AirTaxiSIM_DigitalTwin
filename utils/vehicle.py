@@ -4,6 +4,7 @@ from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Twist
 
 from loguru import logger
+from rclpy.parameter import Parameter
 
 class Vehicle_Node(Node):
     def __init__(self, config) -> None:
@@ -14,7 +15,14 @@ class Vehicle_Node(Node):
         self.vehicle_type = config['ego_vehicle']['type']
 
         # Initialize the ROS2 Node
-        super().__init__(self.vehicle_type)
+        # super().__init__(self.vehicle_type)
+        super().__init__(
+            self.vehicle_type,
+            parameter_overrides=[
+                Parameter('use_sim_time', Parameter.Type.BOOL, True)
+            ]
+        )
+        
         logger.info(f"Constructing a {self.vehicle_type} node...")
 
         # Initial position and velocity

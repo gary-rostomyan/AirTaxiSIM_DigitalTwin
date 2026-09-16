@@ -63,7 +63,8 @@ services:
       - "2002:2002"
 
     volumes:
-      - /home/gary/carla_runtime_uli:/carla_runtime:ro
+      # - /home/gary/carla_runtime_uli:/carla_runtime:ro
+      - /home/gary/carla_image/carla/Dist/CARLA_Shipping_0.9.15-330-gdc9e2976d-dirty:/carla_runtime:ro
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - /usr/share/vulkan/icd.d/nvidia_icd.json:/usr/share/vulkan/icd.d/nvidia_icd.json:ro
       - /etc/localtime:/etc/localtime:ro
@@ -75,11 +76,6 @@ services:
     build:
       context: ../env_sim
       dockerfile: Dockerfile
-    # environment:
-    #   - DISPLAY=${DISPLAY}
-    #   - SERVICE_NAME=env_sim
-    #   - SDL_VIDEODRIVER=x11
-    #   - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
     environment:
       SERVICE_NAME: env_sim
       DISPLAY: ${DISPLAY:-:0}
@@ -90,12 +86,14 @@ services:
       MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
       QT_X11_NO_MITSHM: "1"
       XDG_RUNTIME_DIR: /tmp/runtime-root
+      FASTRTPS_DEFAULT_PROFILES_FILE: /fastdds_no_shm.xml
     volumes:
         - /tmp/.X11-unix:/tmp/.X11-unix:rw
-        - ../env_sim:/colcon_ws/src/env_sim
+        - ../env_sim:/colcon_ws
         - ../utils:/colcon_ws/src/utils
         - ../records:/colcon_ws/src/env_sim/rraaa/script/records
         - /dev/shm:/dev/shm
+        - ./fastdds_no_shm.xml:/fastdds_no_shm.xml:ro
     privileged: true
     network_mode: host
     devices:
@@ -112,16 +110,16 @@ services:
     volumes:
         - ../sim_control:/colcon_ws/src/sim_control
         - ../utils:/colcon_ws/src/utils
+        - ./fastdds_no_shm.xml:/fastdds_no_shm.xml:ro
     privileged: true
     network_mode: host
     tty: true
     stdin_open: true
-    # depends_on:
-    #   - roscore
     working_dir: /colcon_ws
     environment:
       - SERVICE_NAME=sim_control
       - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_no_shm.xml
 
   jaxguam:
     container_name: jaxguam
@@ -131,6 +129,7 @@ services:
     volumes:
         - ../vehicles/jaxguam:/colcon_ws/src/jaxguam
         - ../utils:/colcon_ws/src/utils
+        - ./fastdds_no_shm.xml:/fastdds_no_shm.xml:ro
     privileged: true
     network_mode: host
     devices:
@@ -141,7 +140,9 @@ services:
     environment:
       - SERVICE_NAME=jaxguam
       - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
-  
+      - CUDA_VISIBLE_DEVICES=
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_no_shm.xml
+
   minihawk:
     container_name: minihawk
     build:
@@ -151,20 +152,20 @@ services:
         - /tmp/.X11-unix:/tmp/.X11-unix:rw
         - ../vehicles/minihawk:/colcon_ws/src/minihawk
         - ../utils:/colcon_ws/src/utils
+        - ./fastdds_no_shm.xml:/fastdds_no_shm.xml:ro
     privileged: true
     network_mode: host
     devices:
       - "/dev/snd"
     tty: true
     stdin_open: true
-    # depends_on:
-    #   - roscore
     working_dir: /colcon_ws
     environment:
       - SERVICE_NAME=minihawk
       - SDL_VIDEODRIVER=x11
       - DISPLAY=$DISPLAY
       - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_no_shm.xml
 
   yolov5:
     container_name: yolov5
@@ -174,6 +175,7 @@ services:
     volumes:
         - ../perception/yolov5:/colcon_ws/src/yolov5
         - ../utils:/colcon_ws/src/utils
+        - ./fastdds_no_shm.xml:/fastdds_no_shm.xml:ro
     privileged: true
     network_mode: host
     devices:
@@ -186,6 +188,7 @@ services:
       - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
       - YOLOV5_MODELS_DIR=/colcon_ws/src/yolov5/models
       - YOLOV5_LIB_DIR=/colcon_ws/src/yolov5/yolov5_lib
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_no_shm.xml
 
   ground_station:
     container_name: ground_station
@@ -195,18 +198,18 @@ services:
     volumes:
         - ../ground_station:/colcon_ws/src/ground_station
         - ../utils:/colcon_ws/src/utils
+        - ./fastdds_no_shm.xml:/fastdds_no_shm.xml:ro
     privileged: true
     network_mode: host
     devices:
       - "/dev/snd"
     tty: true
     stdin_open: true
-    # depends_on:
-    #   - roscore
     working_dir: /colcon_ws
     environment:
       - SERVICE_NAME=ground_station
       - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_no_shm.xml
 
   path_planner:
     container_name: path_planner
@@ -216,18 +219,18 @@ services:
     volumes:
         - ../path_planner/planner:/colcon_ws/src/planner
         - ../utils:/colcon_ws/src/utils
+        - ./fastdds_no_shm.xml:/fastdds_no_shm.xml:ro
     privileged: true
     network_mode: host
     devices:
       - "/dev/snd"
     tty: true
     stdin_open: true
-    # depends_on:
-    #   - roscore
     working_dir: /colcon_ws
     environment:
       - SERVICE_NAME=path_planner
       - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_no_shm.xml
 
   rrt_planner:
     container_name: rrt_planner
@@ -237,18 +240,18 @@ services:
     volumes:
         - ../path_planner/trajectory_planner/rrt_planner:/colcon_ws/src/rrt_planner
         - ../utils:/colcon_ws/src/utils
+        - ./fastdds_no_shm.xml:/fastdds_no_shm.xml:ro
     privileged: true
     network_mode: host
     devices:
       - "/dev/snd"
     tty: true
     stdin_open: true
-    # depends_on:
-    #   - roscore
     working_dir: /colcon_ws
     environment:
       - SERVICE_NAME=rrt_planner
       - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_no_shm.xml
 
   verifiable_od:
     container_name: verifiable_od
@@ -258,6 +261,7 @@ services:
     volumes:
         - ../perception/verifiable_od:/colcon_ws/src/verifiable_od
         - ../utils:/colcon_ws/src/utils
+        - ./fastdds_no_shm.xml:/fastdds_no_shm.xml:ro
     privileged: true
     network_mode: host
     devices:
@@ -268,6 +272,7 @@ services:
     environment:
       - SERVICE_NAME=verifiable_od
       - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastdds_no_shm.xml
 
   mapper:
     container_name: mapper
@@ -278,20 +283,15 @@ services:
         - /tmp/.X11-unix:/tmp/.X11-unix:rw
         - ../perception/mapper:/colcon_ws/src/mapper
         - ../utils:/colcon_ws/src/utils
+        - ./fastdds_no_shm.xml:/fastdds_no_shm.xml:ro
     privileged: true
     network_mode: host
     devices:
       - "/dev/snd"
     tty: true
     stdin_open: true
-    # depends_on:
-    #   - roscore
     working_dir: /colcon_ws
     environment:
-      # - SERVICE_NAME=mapper
-      # - SDL_VIDEODRIVER=x11
-      # - DISPLAY=$DISPLAY
-      # - PYTHONPATH=/colcon_ws/src:$PYTHONPATH
       SERVICE_NAME: mapper
       DISPLAY: ${DISPLAY:-:0}
       PYTHONPATH: /colcon_ws/src:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages
@@ -301,3 +301,4 @@ services:
       MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
       QT_X11_NO_MITSHM: "1"
       XDG_RUNTIME_DIR: /tmp/runtime-root
+      FASTRTPS_DEFAULT_PROFILES_FILE: /fastdds_no_shm.xml

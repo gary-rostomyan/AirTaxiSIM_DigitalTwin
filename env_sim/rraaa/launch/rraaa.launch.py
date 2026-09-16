@@ -1,5 +1,5 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, ExecuteProcess
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -11,13 +11,11 @@ def generate_launch_description():
         default_value='guam',
         description='Vehicle type to use'
     )
-    
     plot_arg = DeclareLaunchArgument(
         'plot',
         default_value='false',
         description='Enable plotting'
     )
-    
     save_video_arg = DeclareLaunchArgument(
         'save_video',
         default_value='false',
@@ -28,7 +26,7 @@ def generate_launch_description():
         vehicle_arg,
         plot_arg,
         save_video_arg,
-        
+
         # Carla Node - main environment simulation node
         Node(
             package='rraaa',
@@ -46,6 +44,7 @@ def generate_launch_description():
             executable='node_input_display.py',
             name='display_node',
             output='screen',
+            prefix='python3',
             parameters=[{
                 'use_sim_time': True,
             }],
@@ -65,8 +64,14 @@ def generate_launch_description():
             }],
         ),
 
+        # RViz2 - visualization
+        ExecuteProcess(
+            cmd=['rviz2', '-d', '/colcon_ws/rraaa/rviz_settings/octomap_navi.rviz'],
+            output='screen',
+            additional_env={'DISPLAY': ':0'},
+        ),
+
         # Octomap Converter Node (C++)
-        # Note: This node is commented out as it requires octomap_server to be running
         # Node(
         #     package='rraaa',
         #     executable='converter',

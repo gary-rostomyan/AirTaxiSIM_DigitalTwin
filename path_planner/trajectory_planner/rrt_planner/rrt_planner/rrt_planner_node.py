@@ -13,6 +13,7 @@ from scipy.spatial import KDTree
 from matplotlib import pyplot as plt
 from matplotlib.patches import Circle, Rectangle
 from matplotlib.collections import LineCollection
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 
 from utils import constants
 from utils.config import load_yaml_file, log
@@ -21,6 +22,7 @@ from sensor_msgs_py import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Float32MultiArray
 from geometry_msgs.msg import Twist, PoseStamped
+from time import sleep as _sleep
 
 class Node:
     def __init__(self, x: float, y: float, z:float, children: List[int] = [], parent: int = None):
@@ -362,7 +364,9 @@ class RRTPlannerNode(ROSNode):
         self.last_speed_check_coordinate = None # last speed check position as a 3D numpy array (x, y, z)
 
         # Publish to the target waypoint topic
-        self.target_waypoint_pub = self.create_publisher(Float32MultiArray, '/target/waypoint', 1)
+        # self.target_waypoint_pub = self.create_publisher(Float32MultiArray, '/target/waypoint', 1)
+        qos = QoSProfile(reliability=ReliabilityPolicy.RELIABLE, history=HistoryPolicy.KEEP_LAST, depth=10)
+        self.target_waypoint_pub = self.create_publisher(Float32MultiArray, '/target/waypoint', qos)
 
         # Extract the start and target points
         log.info("Extrating the start and goal points...")
@@ -435,11 +439,14 @@ class RRTPlannerNode(ROSNode):
 
     def run(self):
         log.info("Running RRT planner node...")
-        r = self.create_rate(10)
+        # r = self.create_rate(10)
+        dt = 1.0 / 10
         start_time = time.time()
 
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0)
+
+            print(f"publishing waypoint {self.waypoint_counter}: {self.path[self.waypoint_counter]}")
 
             # Publish the current waypoint
             message = Float32MultiArray()
@@ -466,7 +473,8 @@ class RRTPlannerNode(ROSNode):
             # Publish the data
             self.target_waypoint_pub.publish(message)
 
-            r.sleep()
+            # r.sleep()
+            _sleep(dt)
 
     def pose_callback(self, data):
         # Update the current pose in the planner
