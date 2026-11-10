@@ -63,7 +63,7 @@ services:
 
     volumes:
       # - ${CARLA_DIST:?CARLA_DIST is not set. Copy docker/.env.example to docker/.env and point it at your CARLA_Shipping directory.}:/carla_runtime:ro
-      - /home/gary/carla_image/carla/Dist/CARLA_Shipping_0.9.15-330-gdc9e2976d-dirty:/carla_runtime:ro
+      - ${CARLA_RUNTIME_DIR:?set CARLA_RUNTIME_DIR in docker/.env}:/carla_runtime:ro
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - /usr/share/vulkan/icd.d:/usr/share/vulkan/icd.d:ro
       - /etc/localtime:/etc/localtime:ro
