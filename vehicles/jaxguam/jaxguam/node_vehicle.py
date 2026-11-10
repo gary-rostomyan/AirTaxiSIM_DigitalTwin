@@ -3,6 +3,7 @@
 
 import functools as ft
 from time import sleep as _sleep
+from time import perf_counter as _now
 import ipdb
 import numpy as np
 import os
@@ -93,6 +94,7 @@ class GUAM_Node(Vehicle_Node):
     def main(self):
         logger.info("Constructing GUAM...")
         self.guam = FuncGUAM()
+        logger.info(f"guam.dt = {self.guam.dt} s -> target {1.0 / self.guam.dt:.1f} steps/s")
         batch_size = 1
         state = GuamState.create()
 
@@ -125,7 +127,17 @@ class GUAM_Node(Vehicle_Node):
 
             kk = 0
             logger.info("Entering simulate_batch loop... (first step triggers JIT compilation)")
+            next_t = _now()
+            rate_t0, rate_k0 = _now(), 0
             while rclpy.ok():
+                # Deadline pacing: one GUAM step per guam.dt of wall time on average.
+                if not self.skip_sleep:
+                    now = _now()
+                    if next_t > now:
+                        _sleep(next_t - now)
+                    elif now - next_t > 0.5:
+                        next_t = now        # e.g. after JIT compile: resync
+                    next_t += self.guam.dt
                 # FIX: no spin_once here — a dedicated thread runs rclpy.spin()
                 # so callbacks are always processed regardless of main loop timing.
 
@@ -144,6 +156,11 @@ class GUAM_Node(Vehicle_Node):
                 if kk == 2:
                     logger.info("JIT compilation done, simulation running.")
                 if kk % 1000 == 0:
+                    t_wall = _now()
+                    rate = (kk - rate_k0) / (t_wall - rate_t0)
+                    logger.info(f"rate: {rate:.1f} steps/s achieved vs {1.0 / self.guam.dt:.1f} target "
+                                f"({rate * self.guam.dt:.2f}x real time)")
+                    rate_t0, rate_k0 = t_wall, kk
                     logger.info(f"Step {kk}, "
                                 f"pos=({float(b_state.aircraft[0][6]/3.28084):.2f}, "
                                 f"{float(b_state.aircraft[0][7]/3.28084):.2f}, "
@@ -181,8 +198,6 @@ class GUAM_Node(Vehicle_Node):
                     traceback.print_exc()
                     raise
 
-                if self.skip_sleep == False:
-                    _sleep(self.guam.dt)
 
             if self.plot_switch:
                 bT_state = jtu.tree_map(lambda *args: np.stack(list(args), axis=1), *Tb_state)

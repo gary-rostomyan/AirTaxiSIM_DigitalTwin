@@ -153,6 +153,8 @@ cd airtaxisim
 python3 rraaa.py configs/single-static-jaxguam.yml
 ```
 
+For environment configuration, see in the docker/.env.example.
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 

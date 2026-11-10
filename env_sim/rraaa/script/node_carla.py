@@ -36,6 +36,7 @@ from utils import constants
 
 FREQ_LOW_LEVEL = 10
 dt = 1.0 / FREQ_LOW_LEVEL
+MAX_LAG = 0.5   # s; if we fall further behind than this, resync instead of bursting
 
 
 class GracefulShutdown:
@@ -82,11 +83,22 @@ def run_carla_node(args, client):
     node.set_parameters([Parameter('episode_done', Parameter.Type.BOOL, False)])
     node.set_parameters([Parameter('done_ack',     Parameter.Type.BOOL, False)])
 
+    # Deadline-based wall-clock pacing: exactly one world.tick() per dt on average,
+    # so sim time (dt per tick) tracks wall time 1:1. Sleeps (no busy-wait) and
+    # makes up for an occasional slow frame. Pacing is at the TOP of the loop so
+    # the `continue` below is paced too.
+    next_t = time.perf_counter()
     try:
         while rclpy.ok():
-            rclpy.spin_once(node, timeout_sec=0)
+            now = time.perf_counter()
+            if next_t > now:
+                time.sleep(next_t - now)
+            elif now - next_t > MAX_LAG:
+                next_t = now            # too far behind (startup, reset): resync
+            next_t += dt
 
-            environment.client_clock.tick_busy_loop(FREQ_LOW_LEVEL)
+            rclpy.spin_once(node, timeout_sec=0)
+            environment.client_clock.tick()   # keeps client_fps reporting; no waiting
 
             # Carla Tick — includes ROS message subscription and publishing.
             try:
@@ -103,10 +115,6 @@ def run_carla_node(args, client):
             clock_msg.clock.sec = int(elapsed)
             clock_msg.clock.nanosec = int((elapsed % 1) * 1e9)
             clock_pub.publish(clock_msg)
-
-            # Use system time for pacing — node_carla.py does not depend on
-            # /clock itself, so time.sleep() avoids any circular dependency.
-            time.sleep(dt)
 
             ##########################
             ### Handle Reset Calls ###
